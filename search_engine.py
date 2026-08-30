@@ -38,7 +38,11 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 def extract_reference_tokens(query: str) -> List[str]:
-    """Extracts non-brand reference / model tokens (e.g. '78086' from 'Cartier 78086')."""
+    """
+    Extracts non-brand reference and model tokens, including root numbers.
+    e.g. 'Cartier 78086' -> ['78086']
+    e.g. '4200H/222A-B934' -> ['4200h', '4200', '222a', '222', 'b934']
+    """
     tokens = re.split(r'[/\\_\- ]+', query.strip())
     ref_tokens = []
     for t in tokens:
@@ -46,7 +50,14 @@ def extract_reference_tokens(query: str) -> List[str]:
         if not t_clean or t_clean in KNOWN_BRANDS:
             continue
         if len(t_clean) >= 3:
-            ref_tokens.append(t)
+            if t_clean not in ref_tokens:
+                ref_tokens.append(t_clean)
+            # Extract root numeric parts (e.g. '222' from '222a', '4200' from '4200h')
+            num_match = re.search(r'\d{3,}', t_clean)
+            if num_match:
+                root_num = num_match.group(0)
+                if root_num not in ref_tokens and len(root_num) >= 3:
+                    ref_tokens.append(root_num)
     return ref_tokens
 
 def normalize_watch_query(query: str) -> List[str]:
@@ -57,12 +68,12 @@ def normalize_watch_query(query: str) -> List[str]:
     q = query.strip()
     variations = []
 
-    # 1. Cleaned version with spaces
+    # 1. Cleaned version with spaces instead of slashes/hyphens
     cleaned_spaces = re.sub(r'[/\\_\-]+', ' ', q).strip()
     if cleaned_spaces:
         variations.append(cleaned_spaces)
 
-    # 2. Extract reference-only tokens (e.g. '78086' from 'Cartier 78086')
+    # 2. Extract reference-only tokens
     ref_tokens = extract_reference_tokens(q)
     for rt in ref_tokens:
         if rt not in variations:
@@ -98,8 +109,6 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
         return 0.0
 
     # 1. Required Reference Verification:
-    # If the user provided a specific reference number (e.g. '78086' in 'Cartier 78086'),
-    # that reference MUST be present in full_text!
     ref_tokens = extract_reference_tokens(query)
     if ref_tokens:
         has_ref_match = False
@@ -115,7 +124,7 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
                 has_ref_match = True
                 break
         if not has_ref_match:
-            # Reject false positives that only match the brand name
+            # Reject items missing the reference number
             return 0.0
 
     # 2. Exact full query match
@@ -130,7 +139,7 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     # 4. Variation match
     for v in normalize_watch_query(query):
         v_low = v.lower()
-        if len(v_low) >= 4 and v_low in full_text:
+        if len(v_low) >= 3 and v_low in full_text:
             return 0.92
 
     # 5. Token match
