@@ -877,6 +877,7 @@
 
     // Single Query Execution
     
+    
     async function executeSearch(query) {
       if (!query) return;
       if (isSearching || isBatchRunning) {
@@ -916,72 +917,50 @@
         searchTimer.textContent = `${elapsed}s`;
       }, 100);
 
-      let completedSitesCount = 0;
-
       try {
-        const response = await fetch(`/api/search/stream?query=${encodeURIComponent(query)}`, {
+        const res = await fetch('/api/search', {
+          method: 'POST',
           credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
           signal: searchAbortController.signal
         });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split(/\r?\n\r?\n/);
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const jsonStr = line.replace(/^data:\s*/, '').trim();
-            if (!jsonStr) continue;
-
-            try {
-              const event = JSON.parse(jsonStr);
-              if (event.type === 'site_result') {
-                const sr = event.data;
-                completedSitesCount++;
-                
-                const pill = document.getElementById(`pill-${sr.site_id}`);
-                const prods = sr.products || [];
-                
-                if (prods.length > 0) {
-                  if (pill) {
-                    pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
-                    pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${sr.site_name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${prods.length}</span>`;
-                  }
-                  
-                  prods.forEach(p => {
-                    p.matched_reference = query;
-                    currentResults.push(p);
-                    appendProductCard(p);
-                  });
-                } else {
-                  if (pill) {
-                    pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
-                    pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${sr.site_name}</span>`;
-                  }
-                }
-
-                totalMatchesBadge.textContent = currentResults.length;
-                resultsSummaryText.textContent = `Found ${currentResults.length} matching items (${completedSitesCount}/${enabledSites.length} websites checked)...`;
-              } else if (event.type === 'done') {
-                clearInterval(timerInterval);
-                const finalElapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
-                searchTimer.textContent = `${finalElapsed}s`;
-                resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
-                populateFilterDropdowns();
-              }
-            } catch (err) {
-              console.error('Error parsing SSE event:', err);
-            }
-          }
+        if (!res.ok) {
+          throw new Error(`Server returned HTTP ${res.status}`);
         }
+
+        const data = await res.json();
+        clearInterval(timerInterval);
+        const finalElapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
+        searchTimer.textContent = `${finalElapsed}s`;
+
+        const prods = data.all_products || [];
+        prods.forEach(p => { p.matched_reference = query; });
+        currentResults = prods;
+
+        // Update site pills with match counts
+        if (data.site_results) {
+          data.site_results.forEach(sr => {
+            const pill = document.getElementById(`pill-${sr.site_id}`);
+            const siteMatches = (sr.products || []).length;
+            if (pill) {
+              if (siteMatches > 0) {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
+                pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${sr.site_name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${siteMatches}</span>`;
+              } else {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
+                pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${sr.site_name}</span>`;
+              }
+            }
+          });
+        }
+
+        totalMatchesBadge.textContent = currentResults.length;
+        resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${data.total_sites_searched || enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
+
+        renderResults();
+        populateFilterDropdowns();
 
         if (currentResults.length === 0) {
           noMatchesState.classList.remove('hidden');
@@ -989,6 +968,7 @@
       } catch (e) {
         if (e.name !== 'AbortError') {
           console.error('Search error:', e);
+          alert('Search encountered an error: ' + e.message);
         }
       } finally {
         stopSearch();
