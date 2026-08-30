@@ -46,6 +46,27 @@ KNOWN_BRANDS: Dict[str, List[str]] = {
     "glashutte": ["glashutte original", "glashütte original"]
 }
 
+KNOWN_REF_BRANDS = {
+    "5231": "patek",
+    "5231g": "patek",
+    "5711": "patek",
+    "5712": "patek",
+    "5270": "patek",
+    "5167": "patek",
+    "126518": "rolex",
+    "126518ln": "rolex",
+    "116500": "rolex",
+    "116520": "rolex",
+    "126610": "rolex",
+    "4200h": "vacheron",
+    "222": "vacheron",
+    "4020t": "vacheron",
+    "4500v": "vacheron",
+    "78086": "cartier",
+    "405.035": "lange",
+    "405": "lange",
+}
+
 _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
 
@@ -95,6 +116,15 @@ def extract_query_brands(query: str) -> List[str]:
     for brand, synonyms in KNOWN_BRANDS.items():
         if re.search(r'\b' + re.escape(brand) + r'\b', q_low) or any(re.search(r'\b' + re.escape(s) + r'\b', q_low) for s in synonyms):
             brands.append(brand)
+            
+    if not brands:
+        ref_tokens = extract_reference_tokens(query)
+        for rt in ref_tokens:
+            rt_clean = rt.lower().replace(".", "").replace("-", "").replace(" ", "")
+            for ref_prefix, ref_brand in KNOWN_REF_BRANDS.items():
+                if ref_prefix in rt_clean:
+                    if ref_brand not in brands:
+                        brands.append(ref_brand)
     return brands
 
 def normalize_watch_query(query: str) -> List[str]:
@@ -151,7 +181,7 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     if not q or not full_text:
         return 0.0
 
-    # 1. Brand Consistency Validation (with word boundaries)
+    # 1. Brand Consistency Validation
     query_brands = extract_query_brands(query)
     if query_brands:
         for opposing_brand, syns in KNOWN_BRANDS.items():
@@ -161,27 +191,35 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
                     if not has_target_brand:
                         return 0.0
 
-    # 2. Required Reference Verification
+    # 2. Strict Reference Boundary Verification
     ref_tokens = extract_reference_tokens(query)
     if ref_tokens:
         has_ref_match = False
         for rt in ref_tokens:
             rt_low = rt.lower()
-            if rt_low in full_text:
-                has_ref_match = True
-                break
-            if "-" in rt_low and rt_low.split("-")[0] in full_text:
-                has_ref_match = True
-                break
-            if "/" in rt_low and rt_low.split("/")[0] in full_text:
-                has_ref_match = True
-                break
-            if "." in rt_low and rt_low.replace(".", "-") in full_text:
-                has_ref_match = True
-                break
-            if "." in rt_low and rt_low.replace(".", " ") in full_text:
-                has_ref_match = True
-                break
+            if rt_low.isdigit():
+                # Strict non-digit boundary so '15231' or '52310' does NOT match '5231'
+                pattern = r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)'
+                if re.search(pattern, full_text):
+                    has_ref_match = True
+                    break
+            else:
+                pattern = r'\b' + re.escape(rt_low) + r'\b'
+                if re.search(pattern, full_text) or rt_low in clean_url_path:
+                    has_ref_match = True
+                    break
+                if "-" in rt_low and rt_low.split("-")[0] in full_text:
+                    has_ref_match = True
+                    break
+                if "/" in rt_low and rt_low.split("/")[0] in full_text:
+                    has_ref_match = True
+                    break
+                if "." in rt_low and rt_low.replace(".", "-") in full_text:
+                    has_ref_match = True
+                    break
+                if "." in rt_low and rt_low.replace(".", " ") in full_text:
+                    has_ref_match = True
+                    break
         if not has_ref_match:
             return 0.0
 
@@ -196,8 +234,13 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
 
     # Reference token match
     for rt in ref_tokens:
-        if rt in full_text or (len(rt) >= 3 and rt in clean_url_path):
-            return 0.95
+        rt_low = rt.lower()
+        if rt_low.isdigit():
+            if re.search(r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)', full_text):
+                return 0.95
+        else:
+            if rt_low in full_text or rt_low in clean_url_path:
+                return 0.95
 
     return 0.0
 
