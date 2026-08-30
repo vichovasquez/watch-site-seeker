@@ -370,19 +370,23 @@ def normalize_watch_query(query: str) -> List[str]:
 
 def calculate_match_score(query: str, title: str, description: str = "", url: str = "") -> float:
     q = query.lower().strip()
+    title_clean = title.lower().strip()
     clean_url_path = url.split("?")[0].lower() if url else ""
-    full_text = f"{title} {description} {clean_url_path}".lower()
     
-    if not q or not full_text:
+    if not title_clean or len(title_clean) < 4:
         return 0.0
-
+    if any(nav in title_clean for nav in ["back to", "search results", "brand selection", "all watches", "open internal link", "current window"]):
+        return 0.0
+        
+    primary_text = f"{title_clean} {clean_url_path}"
+    
     # 1. Brand Consistency Validation
     query_brands = extract_query_brands(query)
     if query_brands:
         for opposing_brand, syns in KNOWN_BRANDS.items():
             if opposing_brand not in query_brands:
-                if any(re.search(r'\b' + re.escape(syn) + r'\b', full_text) for syn in syns):
-                    has_target_brand = any(any(re.search(r'\b' + re.escape(ts) + r'\b', full_text) for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
+                if any(re.search(r'\b' + re.escape(syn) + r'\b', primary_text) for syn in syns):
+                    has_target_brand = any(any(re.search(r'\b' + re.escape(ts) + r'\b', primary_text) for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
                     if not has_target_brand:
                         return 0.0
 
@@ -393,48 +397,47 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
         for rt in ref_tokens:
             rt_low = rt.lower()
             if rt_low.isdigit():
-                # Strict non-digit boundary so '15231' or '52310' does NOT match '5231'
                 pattern = r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)'
-                if re.search(pattern, full_text):
+                if re.search(pattern, primary_text):
                     has_ref_match = True
                     break
             else:
                 pattern = r'\b' + re.escape(rt_low) + r'\b'
-                if re.search(pattern, full_text) or rt_low in clean_url_path:
+                if re.search(pattern, primary_text) or rt_low in clean_url_path:
                     has_ref_match = True
                     break
-                if "-" in rt_low and rt_low.split("-")[0] in full_text:
+                if "-" in rt_low and rt_low.split("-")[0] in primary_text:
                     has_ref_match = True
                     break
-                if "/" in rt_low and rt_low.split("/")[0] in full_text:
+                if "/" in rt_low and rt_low.split("/")[0] in primary_text:
                     has_ref_match = True
                     break
-                if "." in rt_low and rt_low.replace(".", "-") in full_text:
+                if "." in rt_low and rt_low.replace(".", "-") in primary_text:
                     has_ref_match = True
                     break
-                if "." in rt_low and rt_low.replace(".", " ") in full_text:
+                if "." in rt_low and rt_low.replace(".", " ") in primary_text:
+                    has_ref_match = True
+                    break
+                if "." in rt_low and rt_low.replace(".", "") in primary_text:
                     has_ref_match = True
                     break
         if not has_ref_match:
             return 0.0
 
-    # Exact full query match
-    if q in full_text:
+    if q in primary_text:
         return 1.0
 
-    # Cleaned query match
     cleaned_q = re.sub(r'[/\\_\-\.]+', ' ', q).strip()
-    if cleaned_q and cleaned_q in full_text:
+    if cleaned_q and cleaned_q in primary_text:
         return 0.98
 
-    # Reference token match
     for rt in ref_tokens:
         rt_low = rt.lower()
         if rt_low.isdigit():
-            if re.search(r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)', full_text):
+            if re.search(r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)', primary_text):
                 return 0.95
         else:
-            if rt_low in full_text or rt_low in clean_url_path:
+            if rt_low in primary_text or rt_low in clean_url_path:
                 return 0.95
 
     return 0.0
@@ -587,25 +590,27 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
     html = resp["text"]
     soup = BeautifulSoup(html, "html.parser")
     products = []
-    q_tokens = [t.strip().lower() for t in query.replace("-", " ").replace("/", " ").split() if len(t.strip()) > 1]
     
     # 1. Specialized Parser for WatchRecon
     if "watchrecon.com" in base_url:
         for a in soup.find_all("a", href=True):
             href = a["href"]
             title_text = a.get_text(" ", strip=True)
-            if query.lower() in title_text.lower() and len(title_text) > 10:
-                p_url = urllib.parse.urljoin(base_url, href)
+            p_url = urllib.parse.urljoin(base_url, href)
+            trans_title = translate_to_english(title_text)
+            score = calculate_match_score(query, trans_title, "", p_url)
+            if score >= 0.70 and len(title_text) > 10:
                 price_match = re.search(r'\$[\d,]+', title_text)
                 price = convert_currency_to_usd(price_match.group(0)) if price_match else "Inquire"
-                products.append({
-                    "title": title_text[:120],
-                    "url": p_url,
-                    "price": convert_currency_to_usd(price),
-                    "image": ""
-                })
-        if products:
-            return products[:15]
+                if not any(p["url"] == p_url for p in products):
+                    products.append({
+                        "title": trans_title[:120],
+                        "url": p_url,
+                        "price": price,
+                        "image": "",
+                        "score": round(score, 2)
+                    })
+        return products[:15]
 
     # 2. General / Japanese / Custom Dealer Extraction
     card_selectors = [
@@ -626,12 +631,7 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
 
     for item in items[:40]:
         text = item.get_text(" ", strip=True)
-        text_lower = text.lower()
         
-        matches_query = any(tok in text_lower for tok in q_tokens) if q_tokens else (query.lower() in text_lower)
-        if not matches_query:
-            continue
-            
         a_tag = item.find("a", href=True)
         if not a_tag:
             continue
@@ -644,7 +644,7 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
         title = ""
         for heading in item.find_all(["h2", "h3", "h4", "h5", "a"]):
             h_text = heading.get_text(strip=True)
-            if any(tok in h_text.lower() for tok in q_tokens) and len(h_text) > 8:
+            if len(h_text) > 8:
                 title = h_text
                 break
         if not title:
@@ -654,6 +654,12 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
             continue
             
         title = re.sub(r'\s+', ' ', title).strip()
+        trans_title = translate_to_english(title)
+        
+        # Strict Relevance Scoring Gate
+        score = calculate_match_score(query, trans_title, text, p_url)
+        if score < 0.70:
+            continue
         
         # Price extraction (USD, EUR, GBP, JPY ¥ / 円)
         price = "Inquire"
@@ -671,27 +677,33 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
                 
         if not any(p["url"] == p_url for p in products):
             products.append({
-                "title": translate_to_english(title)[:140],
+                "title": trans_title[:140],
                 "url": p_url,
-                "price": convert_currency_to_usd(price),
-                "image": img_url
+                "price": price,
+                "image": img_url,
+                "score": round(score, 2)
             })
             
+    # Fallback to direct anchor links if no structured cards found
     if not products:
         for a in soup.find_all("a", href=True):
             txt = a.get_text(" ", strip=True)
-            if len(txt) > 12 and any(tok in txt.lower() for tok in q_tokens):
+            if len(txt) > 10:
                 p_url = urllib.parse.urljoin(base_url, a["href"])
                 if any(ext in p_url.lower() for ext in [".html", "/item", "/goods", "/product", "/shop", "/watch"]):
-                    price_match = re.search(r'(\$|€|£|¥)\s?[\d,]+|([\d,]+)\s?円', txt)
-                    price = convert_currency_to_usd(price_match.group(0).strip()) if price_match else "Inquire"
-                    if not any(p["url"] == p_url for p in products):
-                        products.append({
-                            "title": translate_to_english(txt)[:140],
-                            "url": p_url,
-                            "price": convert_currency_to_usd(price),
-                            "image": ""
-                        })
+                    trans_txt = translate_to_english(txt)
+                    score = calculate_match_score(query, trans_txt, "", p_url)
+                    if score >= 0.70:
+                        price_match = re.search(r'(\$|€|£|¥|￥)\s?[\d,]+|([\d,]+)\s?円', txt)
+                        price = convert_currency_to_usd(price_match.group(0).strip()) if price_match else "Inquire"
+                        if not any(p["url"] == p_url for p in products):
+                            products.append({
+                                "title": trans_txt[:140],
+                                "url": p_url,
+                                "price": price,
+                                "image": "",
+                                "score": round(score, 2)
+                            })
                         
     return products[:15]
 
