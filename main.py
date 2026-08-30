@@ -429,7 +429,9 @@ async def search_endpoint(payload: Dict = Body(...)):
     
     all_products = []
     for r in results:
+        site_name = r.get("site_name", "Dealer")
         for p in r.get("products", []):
+            p["site_name"] = site_name
             all_products.append(p)
             
     return {
