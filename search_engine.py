@@ -18,6 +18,14 @@ DEFAULT_HEADERS = {
     "Upgrade-Insecure-Requests": "1",
 }
 
+KNOWN_BRANDS = {
+    "cartier", "rolex", "patek", "philippe", "vacheron", "constantin", "lange",
+    "sohne", "soehne", "audemars", "piguet", "omega", "tudor", "iwc", "breitling",
+    "jaeger", "lecoultre", "richard", "mille", "hublot", "panerai", "zenith",
+    "tag", "heuer", "grand", "seiko", "chopard", "bvlgari", "bulgari", "fp",
+    "journe", "girard", "perregaux", "blancpain", "breguet", "glashutte"
+}
+
 # 60-second in-memory response cache to prevent 429 rate limiting
 _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
@@ -29,51 +37,59 @@ def clean_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
+def extract_reference_tokens(query: str) -> List[str]:
+    """Extracts non-brand reference / model tokens (e.g. '78086' from 'Cartier 78086')."""
+    tokens = re.split(r'[/\\_\- ]+', query.strip())
+    ref_tokens = []
+    for t in tokens:
+        t_clean = t.strip().lower()
+        if not t_clean or t_clean in KNOWN_BRANDS:
+            continue
+        if len(t_clean) >= 3:
+            ref_tokens.append(t)
+    return ref_tokens
+
 def normalize_watch_query(query: str) -> List[str]:
     """
     Generates intelligent query variations.
-    Handles slashes (e.g. 4200H/222A-B934 -> ['4200H 222A B934', '4200H', '222A', '4200H/222A-B934']),
-    hyphens (e.g. 126518LN-0004 -> ['126518LN 0004', '126518LN', '126518LN-0004']),
-    and multi-word brands (e.g. Cartier 78086 -> ['Cartier 78086', '78086']).
+    Never falls back to generic brand names (e.g. 'Cartier 78086' -> ['Cartier 78086', '78086']).
     """
     q = query.strip()
     variations = []
 
-    # 1. Cleaned version with spaces instead of slashes/hyphens (Safest for Shopify/Cloudflare search)
+    # 1. Cleaned version with spaces
     cleaned_spaces = re.sub(r'[/\\_\-]+', ' ', q).strip()
     if cleaned_spaces:
         variations.append(cleaned_spaces)
 
-    # 2. Base model reference before slash (e.g. "4200H" from "4200H/222A-B934")
-    if "/" in q:
-        slash_prefix = q.split("/")[0].strip()
-        if slash_prefix and slash_prefix not in variations and len(slash_prefix) >= 3:
-            variations.append(slash_prefix)
-        slash_suffix = q.split("/")[1].strip()
-        if "-" in slash_suffix:
-            sub = slash_suffix.split("-")[0].strip()
-            if sub and sub not in variations and len(sub) >= 3:
-                variations.append(sub)
+    # 2. Extract reference-only tokens (e.g. '78086' from 'Cartier 78086')
+    ref_tokens = extract_reference_tokens(q)
+    for rt in ref_tokens:
+        if rt not in variations:
+            variations.append(rt)
 
-    # 3. Base model reference before hyphen (e.g. "126518LN" from "126518LN-0004")
+    # 3. Base model before slash or hyphen
+    if "/" in q:
+        slash_p = q.split("/")[0].strip()
+        if slash_p and slash_p not in variations and len(slash_p) >= 3:
+            variations.append(slash_p)
     if "-" in q:
-        hyphen_prefix = q.split("-")[0].strip()
-        if hyphen_prefix and hyphen_prefix not in variations and len(hyphen_prefix) >= 3:
-            variations.append(hyphen_prefix)
+        hyphen_p = q.split("-")[0].strip()
+        if hyphen_p and hyphen_p not in variations and len(hyphen_p) >= 3:
+            variations.append(hyphen_p)
 
     # 4. Original query
     if q not in variations:
         variations.append(q)
 
-    # 5. Token breakdown for multi-word (e.g. "Cartier 78086" -> "78086")
-    tokens = re.split(r'[/\\_\- ]+', q)
-    for t in tokens:
-        if len(t) >= 4 and t not in variations and not t.isdigit():
-            variations.append(t)
-        elif len(t) >= 4 and t not in variations:
-            variations.append(t)
+    # Filter out generic single brand names from variations
+    filtered = []
+    for v in variations:
+        if v.lower().strip() in KNOWN_BRANDS:
+            continue
+        filtered.append(v)
 
-    return variations
+    return filtered if filtered else [q]
 
 def calculate_match_score(query: str, title: str, description: str = "", url: str = "") -> float:
     q = query.lower().strip()
@@ -81,28 +97,47 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     if not q or not full_text:
         return 0.0
 
-    # Exact query match
+    # 1. Required Reference Verification:
+    # If the user provided a specific reference number (e.g. '78086' in 'Cartier 78086'),
+    # that reference MUST be present in full_text!
+    ref_tokens = extract_reference_tokens(query)
+    if ref_tokens:
+        has_ref_match = False
+        for rt in ref_tokens:
+            rt_low = rt.lower()
+            if rt_low in full_text:
+                has_ref_match = True
+                break
+            if "-" in rt_low and rt_low.split("-")[0] in full_text:
+                has_ref_match = True
+                break
+            if "/" in rt_low and rt_low.split("/")[0] in full_text:
+                has_ref_match = True
+                break
+        if not has_ref_match:
+            # Reject false positives that only match the brand name
+            return 0.0
+
+    # 2. Exact full query match
     if q in full_text:
         return 1.0
 
-    # Cleaned query (without slashes/hyphens) match
+    # 3. Cleaned query (without punctuation) match
     cleaned_q = re.sub(r'[/\\_\-]+', ' ', q).strip()
     if cleaned_q and cleaned_q in full_text:
         return 0.98
 
-    # Variations match (base reference like 4200H or 126518LN)
-    for v in normalize_watch_query(query)[1:]:
+    # 4. Variation match
+    for v in normalize_watch_query(query):
         v_low = v.lower()
         if len(v_low) >= 4 and v_low in full_text:
             return 0.92
 
-    # Token match
-    tokens = re.split(r'[/\\_\- ]+', q)
-    matched_tokens = [t for t in tokens if len(t) >= 2 and t in full_text]
+    # 5. Token match
+    tokens = [t.lower() for t in re.split(r'[/\\_\- ]+', q) if t]
+    matched_tokens = [t for t in tokens if t in full_text]
     if len(matched_tokens) == len(tokens) and len(tokens) > 0:
         return 0.88
-    if len(tokens) > 0 and len(matched_tokens) >= 1:
-        return round(0.5 + (len(matched_tokens) / len(tokens)) * 0.35, 2)
 
     return 0.0
 
@@ -122,7 +157,7 @@ def fetch_url_sync(url: str, timeout: float = 8.0, retries: int = 1) -> Dict[str
                 }
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt < retries:
-                time.sleep(1.5)  # Backoff and retry once
+                time.sleep(1.5)
                 continue
             return {"status": e.code, "error": str(e), "text": ""}
         except Exception as e:
@@ -167,7 +202,7 @@ def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, 
             _CACHE_EXPIRY[cache_key] = now + 60.0
             return result_payload
 
-    # 2. Shopify Search (Suggest API & HTML Search with cleaned terms)
+    # 2. Shopify Search (Suggest API & HTML Search)
     for q_term in query_variations:
         prods = search_shopify_sync(base_url, q_term, original_query=query, timeout=timeout)
         if prods:
@@ -199,7 +234,6 @@ def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, 
 
 def search_shopify_sync(base_url: str, query: str, original_query: str = "", timeout: float = 8.0) -> List[Dict]:
     target_q = original_query or query
-    # Clean slashes/hyphens for Shopify URL parameters
     clean_param = re.sub(r'[/\\_]+', ' ', query).strip()
     encoded_q = urllib.parse.quote(clean_param)
 
@@ -221,7 +255,7 @@ def search_shopify_sync(base_url: str, query: str, original_query: str = "", tim
                 if img and img.startswith("//"):
                     img = "https:" + img
                 score = calculate_match_score(target_q, title, p.get("body", ""), product_url)
-                if score >= 0.35:
+                if score >= 0.70:
                     products.append({
                         "title": title,
                         "price": price_str,
@@ -268,7 +302,7 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
         product_url = urllib.parse.urljoin(base_url, href)
         score = calculate_match_score(query, title, "", product_url)
 
-        if score >= 0.35:
+        if score >= 0.70:
             seen.add(clean_href)
             card = a.find_parent(["li", "div", "article"])
             price_str = "Inquire"

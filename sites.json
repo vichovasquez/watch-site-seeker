@@ -3,7 +3,7 @@
     "id": "site-001",
     "name": "Lvmwtimepieces",
     "url": "https://lvmwtimepieces.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Dealer",
     "platform": "shopify",
     "custom_search_url": ""
