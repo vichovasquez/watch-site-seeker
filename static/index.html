@@ -124,97 +124,67 @@
       </div>
     </div>
 
-    <!-- MULTI-SELECT WATCHLIST & BATCH SEARCH PANEL -->
-    <div class="glass-panel p-5 sm:p-6 rounded-3xl flex flex-col gap-4 border border-amber-500/25 bg-slate-900/80 shadow-xl shadow-black/30">
+    <!-- MULTI-SELECT WATCHLIST & BATCH SEARCH PANEL (MIMICKING WEBSITES CONTROLLER) -->
+    <div class="glass-panel p-5 rounded-2xl flex flex-col gap-4 border border-amber-500/25 bg-slate-900/80 shadow-xl shadow-black/30">
       
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-          <div class="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg shadow-inner">
-            <i class="fa-solid fa-layer-group"></i>
+      <!-- CONTROLLER BAR -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
+            <i class="fa-solid fa-tags"></i>
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <h3 class="text-base font-bold text-white">Watch Reference Watchlist</h3>
-              <span id="refSelectionBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">5 of 5 selected</span>
-            </div>
-            <p class="text-xs text-slate-400 mt-0.5">Select specific watches or all references from your Google Doc to search in parallel.</p>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>Watch Reference Watchlist</span>
+              <span id="refSelectionBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-amber-300 border border-slate-700">5 of 5 active</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Click any chip to toggle on/off. Click "Search Active References" to search all active watches in parallel.</p>
           </div>
         </div>
 
-        <!-- BATCH SEARCH & SYNC CONTROLS -->
-        <div class="flex items-center gap-2.5 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Sync from Google Doc -->
           <button 
             type="button" 
             id="btnSyncRefGdoc" 
-            class="px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-2 transition"
+            class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
             title="Sync & Reload References from Google Doc"
           >
             <i class="fa-brands fa-google-drive text-emerald-400"></i>
-            <span>Sync Doc</span>
+            <span class="hidden sm:inline">Sync Doc</span>
           </button>
 
+          <!-- Toggle Editor -->
           <button 
             type="button" 
             id="btnToggleRefEditor" 
-            class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
+            class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <i class="fa-solid fa-pen-to-square text-amber-400"></i>
-            <span id="refEditorToggleText">Edit Multi-List</span>
+            <span id="refEditorToggleText">Edit Full List</span>
           </button>
 
+          <!-- Main Search Active References Action Button -->
           <button 
             type="button"
             id="btnSearchSelectedRefs" 
-            class="px-6 py-2.5 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 transition shadow-lg shadow-amber-500/20 flex items-center gap-2 text-xs active:scale-[0.98]"
+            class="px-5 py-2 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 transition shadow-lg shadow-amber-500/20 flex items-center gap-2 text-xs active:scale-[0.98]"
           >
             <i class="fa-solid fa-bolt-lightning text-sm"></i>
-            <span id="btnSearchSelectedText">Search Selected References (5)</span>
+            <span id="btnSearchSelectedText">Search Active References (5)</span>
           </button>
         </div>
       </div>
 
-      <!-- MULTI-SELECT TOGGLE CONTROLS & CHIPS -->
-      <div class="flex flex-col gap-2.5 pt-1">
-        <div class="flex items-center justify-between flex-wrap gap-2 text-xs text-slate-400">
-          <div class="flex items-center gap-2">
-            <span>Selection:</span>
-            <button type="button" id="btnSelectAllRefs" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition">
-              Select All
-            </button>
-            <button type="button" id="btnDeselectAllRefs" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition">
-              Deselect All
-            </button>
-          </div>
-
-          <!-- Inline Add Single Reference -->
-          <div class="flex items-center gap-1.5">
-            <input 
-              type="text" 
-              id="inlineAddRefInput" 
-              placeholder="e.g., 5712/1A-001" 
-              class="px-3 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 w-44 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
-            >
-            <button id="btnInlineAddRef" class="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs whitespace-nowrap transition">
-              + Add
-            </button>
-          </div>
-        </div>
-
-        <!-- INTERACTIVE MULTI-SELECT WATCHLIST CHIPS -->
-        <div id="referencesChipsContainer" class="flex flex-wrap gap-2.5">
-          <!-- Rendered dynamically by JS -->
-        </div>
-      </div>
-
-      <!-- INLINE MULTI-LINE REFERENCES EDITOR (EXPANDABLE) -->
-      <div id="refEditorContainer" class="pt-4 border-t border-slate-800/80 flex flex-col gap-3 hidden">
+      <!-- INLINE EDITABLE REFERENCES TEXTAREA (COLLAPSIBLE) -->
+      <div id="refEditorContainer" class="pt-3 border-t border-slate-800/80 flex flex-col gap-3 hidden">
         <div class="flex items-center justify-between text-xs">
           <span class="text-slate-300 font-semibold flex items-center gap-2">
-            <i class="fa-solid fa-pen-nib text-amber-400"></i> Edit References (One reference per line):
+            <i class="fa-solid fa-pen-nib text-amber-400"></i> Direct Reference List Editor (One reference per line):
           </span>
           <button id="btnResetRefsDefault" class="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1">
             <i class="fa-solid fa-rotate-right"></i>
-            <span>Reload Google Doc References</span>
+            <span>Reload Google Doc Defaults</span>
           </button>
         </div>
 
@@ -222,21 +192,53 @@
           id="rawRefsTextarea" 
           rows="6" 
           placeholder="126518LN-0004&#10;4200H/222A-B934&#10;Cartier 78086&#10;Lange 405.035&#10;5231G-001" 
-          class="w-full p-4 rounded-2xl bg-slate-900 border border-slate-700 font-mono text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 custom-scrollbar shadow-inner"
+          class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 font-mono text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 custom-scrollbar shadow-inner"
         ></textarea>
 
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
-            <button id="btnSaveRefs" class="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-sm">
+            <button id="btnSaveRefs" class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-sm">
               <i class="fa-solid fa-check"></i>
-              <span>Save Reference List</span>
+              <span>Save & Update Watchlist</span>
             </button>
-            <button id="btnCancelRefEditor" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">
-              Close
+            <button id="btnCancelRefEditor" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">
+              Close Editor
             </button>
           </div>
 
-          <span class="text-[11px] text-slate-500 font-mono">Synced from Google Doc</span>
+          <span class="text-[11px] text-slate-500 font-mono">Synced with Google Doc</span>
+        </div>
+      </div>
+
+      <!-- REFERENCES FILTER & PILLS QUICK SELECTOR (IDENTICAL TO TARGET WEBSITES) -->
+      <div class="pt-2 border-t border-slate-800/60 flex flex-col gap-2">
+        <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400">Quick Toggle:</span>
+            <button type="button" id="btnSelectAllRefs" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px]">Select All</button>
+            <button type="button" id="btnDeselectAllRefs" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px]">Deselect All</button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="text" id="refFilterInput" placeholder="Filter references..." class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 w-44 focus:outline-none focus:ring-1 focus:ring-amber-500">
+            
+            <!-- Quick Inline Add Reference -->
+            <div class="flex items-center gap-1">
+              <input 
+                type="text" 
+                id="inlineAddRefInput" 
+                placeholder="+ new ref..." 
+                class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 w-28 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+              >
+              <button id="btnInlineAddRef" class="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs whitespace-nowrap transition">
+                + Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="referencesChipsContainer" class="flex flex-wrap gap-1.5 p-1 bg-slate-900/40 rounded-xl custom-scrollbar border border-slate-800/50">
+          <!-- Populated dynamically by JS matching quickSiteChips style -->
         </div>
       </div>
 
@@ -654,12 +656,14 @@
       }
     }
 
+    const refFilterInput = document.getElementById('refFilterInput');
+
     function updateReferencesUI() {
       const total = currentReferences.length;
       const selectedCount = selectedReferences.size;
       
-      refSelectionBadge.textContent = `${selectedCount} of ${total} selected`;
-      btnSearchSelectedText.textContent = `Search Selected (${selectedCount})`;
+      refSelectionBadge.textContent = `${selectedCount} of ${total} active`;
+      btnSearchSelectedText.textContent = `Search Active References (${selectedCount})`;
       btnSearchSelectedRefs.disabled = selectedCount === 0;
       btnSearchSelectedRefs.classList.toggle('opacity-50', selectedCount === 0);
       btnSearchSelectedRefs.classList.toggle('cursor-not-allowed', selectedCount === 0);
@@ -670,56 +674,61 @@
       const currentSelectedRef = filterRefSelect.value;
       filterRefSelect.innerHTML = '<option value="all">All References</option>';
 
+      const filterText = (refFilterInput ? refFilterInput.value || '' : '').toLowerCase();
+
       currentReferences.forEach(ref => {
         const opt = document.createElement('option');
         opt.value = ref;
         opt.textContent = `Ref: ${ref}`;
         filterRefSelect.appendChild(opt);
 
+        if (filterText && !ref.toLowerCase().includes(filterText)) {
+          return;
+        }
+
         const isSelected = selectedReferences.has(ref);
 
         const chip = document.createElement('div');
-        chip.className = `flex items-center gap-2 px-3 py-2 rounded-2xl border transition shadow-sm ${
+        chip.className = `group px-2 py-0.5 rounded-lg text-[11px] font-mono font-medium flex items-center gap-1.5 transition cursor-pointer select-none ${
           isSelected 
-            ? 'bg-amber-500/15 border-amber-500/50 text-white' 
-            : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:border-slate-600'
+            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30' 
+            : 'bg-slate-800/40 text-slate-500 border border-slate-700/40 hover:text-slate-300'
         }`;
         
         chip.innerHTML = `
-          <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" ${isSelected ? 'checked' : ''} class="ref-checkbox rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-amber-500/40 h-4 w-4 cursor-pointer">
-            <span class="font-mono text-xs font-bold ${isSelected ? 'text-amber-300' : 'text-slate-300'}">${ref}</span>
-          </label>
-          <div class="flex items-center gap-1 pl-1 border-l border-slate-700/60">
-            <button type="button" class="btn-single-search text-slate-400 hover:text-amber-300 p-1 transition" title="Search for '${ref}' individually">
-              <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
+          <i class="fa-solid ${isSelected ? 'fa-circle-check text-amber-400' : 'fa-circle text-slate-600'} text-[9px]"></i>
+          <span>${ref}</span>
+          <div class="flex items-center gap-1 pl-1 border-l border-slate-700/60 ml-0.5" onclick="event.stopPropagation()">
+            <button type="button" class="btn-single-search text-slate-500 hover:text-amber-300 p-0.5 transition" title="Search single reference: ${ref}">
+              <i class="fa-solid fa-magnifying-glass text-[9px]"></i>
             </button>
-            <button type="button" class="btn-remove-ref text-slate-500 hover:text-rose-400 p-1 transition" title="Remove reference">
-              <i class="fa-solid fa-xmark text-[11px]"></i>
+            <button type="button" class="btn-remove-ref text-slate-500 hover:text-rose-400 p-0.5 transition" title="Delete reference">
+              <i class="fa-solid fa-xmark text-[9px]"></i>
             </button>
           </div>
         `;
 
-        // Checkbox change handler
-        const cb = chip.querySelector('.ref-checkbox');
-        cb.addEventListener('change', () => {
-          if (cb.checked) {
-            selectedReferences.add(ref);
-          } else {
+        // Click anywhere on chip to toggle selection (mimicking websites chips)
+        chip.addEventListener('click', () => {
+          if (selectedReferences.has(ref)) {
             selectedReferences.delete(ref);
+          } else {
+            selectedReferences.add(ref);
           }
           updateReferencesUI();
         });
 
         // 1-Click Search single ref
-        chip.querySelector('.btn-single-search').addEventListener('click', () => {
+        chip.querySelector('.btn-single-search').addEventListener('click', (e) => {
+          e.stopPropagation();
           searchInput.value = ref;
           btnClearSearch.classList.remove('hidden');
           executeSearch(ref);
         });
 
         // Delete ref
-        chip.querySelector('.btn-remove-ref').addEventListener('click', () => {
+        chip.querySelector('.btn-remove-ref').addEventListener('click', (e) => {
+          e.stopPropagation();
           deleteRef(ref);
         });
 
@@ -727,18 +736,6 @@
       });
 
       filterRefSelect.value = currentSelectedRef || 'all';
-    }
-
-    async function deleteRef(ref) {
-      try {
-        const res = await fetch(`/api/references/${encodeURIComponent(ref)}`, { method: 'DELETE' });
-        const data = await res.json();
-        currentReferences = data.references || [];
-        selectedReferences.delete(ref);
-        updateReferencesUI();
-      } catch (e) {
-        alert(e.message);
-      }
     }
 
     function updateSitesUI() {
@@ -1362,6 +1359,7 @@
       });
 
       siteFilterInput.addEventListener('input', renderQuickChips);
+      if (refFilterInput) refFilterInput.addEventListener('input', updateReferencesUI);
 
       // Filters
       filterRefSelect.addEventListener('change', renderResults);
