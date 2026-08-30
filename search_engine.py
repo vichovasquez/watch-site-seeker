@@ -18,13 +18,36 @@ DEFAULT_HEADERS = {
     "Upgrade-Insecure-Requests": "1",
 }
 
-KNOWN_BRANDS = {
-    "cartier", "rolex", "patek", "philippe", "vacheron", "constantin", "lange",
-    "sohne", "soehne", "audemars", "piguet", "omega", "tudor", "iwc", "breitling",
-    "jaeger", "lecoultre", "richard", "mille", "hublot", "panerai", "zenith",
-    "tag", "heuer", "grand", "seiko", "chopard", "bvlgari", "bulgari", "fp",
-    "journe", "girard", "perregaux", "blancpain", "breguet", "glashutte"
+KNOWN_BRANDS: Dict[str, List[str]] = {
+    "cartier": ["cartier"],
+    "rolex": ["rolex"],
+    "patek": ["patek", "philippe"],
+    "vacheron": ["vacheron", "constantin", "historiques", "overseas"],
+    "lange": ["lange", "sohne", "soehne", "datograph", "saxonia", "odysseus", "zeitwerk", "cabaret"],
+    "audemars": ["audemars", "piguet", "royal oak", "offshore"],
+    "omega": ["omega", "speedmaster", "seamaster", "constellation"],
+    "breitling": ["breitling", "navitimer", "superocean", "chronomat"],
+    "iwc": ["iwc", "schaffhausen", "portugieser", "portofino"],
+    "tudor": ["tudor", "black bay", "pelagos"],
+    "richard": ["richard", "mille"],
+    "panerai": ["panerai", "luminor", "radiomir"],
+    "zenith": ["zenith", "el primero", "chronomaster"],
+    "tag": ["tag", "heuer", "carrera", "monaco", "aquaracer"],
+    "grand": ["grand seiko", "seiko"],
+    "chopard": ["chopard", "mille miglia", "alpine eagle"],
+    "bvlgari": ["bvlgari", "bulgari", "octo"],
+    "fp": ["fp journe", "journe"],
+    "girard": ["girard perregaux", "perregaux", "laureato"],
+    "blancpain": ["blancpain", "fifty fathoms"],
+    "breguet": ["breguet"],
+    "glashutte": ["glashutte", "glashütte"]
 }
+
+BRAND_KEYWORDS = set()
+for b, syns in KNOWN_BRANDS.items():
+    BRAND_KEYWORDS.add(b)
+    for s in syns:
+        BRAND_KEYWORDS.add(s)
 
 _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
@@ -39,13 +62,16 @@ def clean_text(text: str) -> str:
 def extract_reference_tokens(query: str) -> List[str]:
     """
     Extracts non-brand reference / model tokens.
-    Handles dots, hyphens, slashes (e.g. 'Lange 405.035' -> ['405.035', '405 035', '405-035', '405']).
+    Handles dots, hyphens, and slashes.
+    e.g. 'Lange 405.035' -> ['405.035', '405 035', '405-035', '405035']
+    e.g. 'Cartier 78086' -> ['78086']
+    e.g. '4200H/222A-B934' -> ['4200h', '4200', '222a', '222', 'b934']
     """
     tokens = re.split(r'[/\\_\- ]+', query.strip())
     ref_tokens = []
     for t in tokens:
         t_clean = t.strip().lower()
-        if not t_clean or t_clean in KNOWN_BRANDS:
+        if not t_clean or t_clean in BRAND_KEYWORDS:
             continue
         if len(t_clean) >= 3:
             if t_clean not in ref_tokens:
@@ -53,21 +79,29 @@ def extract_reference_tokens(query: str) -> List[str]:
             if "." in t_clean:
                 dot_space = t_clean.replace(".", " ")
                 dot_hyphen = t_clean.replace(".", "-")
-                dot_base = t_clean.split(".")[0]
+                dot_num = t_clean.replace(".", "")
                 if dot_space not in ref_tokens: ref_tokens.append(dot_space)
                 if dot_hyphen not in ref_tokens: ref_tokens.append(dot_hyphen)
-                if dot_base not in ref_tokens and len(dot_base) >= 3: ref_tokens.append(dot_base)
-            num_match = re.search(r'\d{3,}', t_clean)
-            if num_match:
-                root_num = num_match.group(0)
-                if root_num not in ref_tokens and len(root_num) >= 3:
-                    ref_tokens.append(root_num)
+                if dot_num not in ref_tokens: ref_tokens.append(dot_num)
+            else:
+                num_match = re.search(r'\d{3,}', t_clean)
+                if num_match:
+                    root_num = num_match.group(0)
+                    if root_num not in ref_tokens and len(root_num) >= 3:
+                        ref_tokens.append(root_num)
     return ref_tokens
+
+def extract_query_brands(query: str) -> List[str]:
+    q_low = query.lower()
+    brands = []
+    for brand, synonyms in KNOWN_BRANDS.items():
+        if brand in q_low or any(s in q_low for s in synonyms):
+            brands.append(brand)
+    return brands
 
 def normalize_watch_query(query: str) -> List[str]:
     """
-    Generates intelligent query variations.
-    e.g. 'Lange 405.035' -> ['Lange 405 035', '405.035', '405 035', '405-035', '405', 'Lange 405.035']
+    Generates intelligent query variations for network search.
     """
     q = query.strip()
     variations = []
@@ -77,7 +111,7 @@ def normalize_watch_query(query: str) -> List[str]:
     if cleaned_spaces:
         variations.append(cleaned_spaces)
 
-    # 2. Extract reference-only tokens and variations
+    # 2. Extract reference-only tokens
     ref_tokens = extract_reference_tokens(q)
     for rt in ref_tokens:
         if rt not in variations:
@@ -92,15 +126,19 @@ def normalize_watch_query(query: str) -> List[str]:
         hyphen_p = q.split("-")[0].strip()
         if hyphen_p and hyphen_p not in variations and len(hyphen_p) >= 3:
             variations.append(hyphen_p)
+    if "." in q:
+        dot_p = q.split(".")[0].strip()
+        if dot_p and dot_p not in variations and len(dot_p) >= 3:
+            variations.append(dot_p)
 
     # 4. Original query
     if q not in variations:
         variations.append(q)
 
-    # Filter out generic single brand names
+    # Filter out generic single brand names from variations
     filtered = []
     for v in variations:
-        if v.lower().strip() in KNOWN_BRANDS:
+        if v.lower().strip() in BRAND_KEYWORDS:
             continue
         filtered.append(v)
 
@@ -114,7 +152,18 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     if not q or not full_text:
         return 0.0
 
-    # 1. Required Reference Verification
+    # 1. Brand Consistency Validation:
+    # If the user queried for a brand (e.g. "Lange", "Cartier"), reject items clearly from another opposing brand
+    query_brands = extract_query_brands(query)
+    if query_brands:
+        for opposing_brand, syns in KNOWN_BRANDS.items():
+            if opposing_brand not in query_brands:
+                if any(syn in full_text for syn in syns):
+                    has_target_brand = any(any(ts in full_text for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
+                    if not has_target_brand:
+                        return 0.0
+
+    # 2. Required Reference Verification
     ref_tokens = extract_reference_tokens(query)
     if ref_tokens:
         has_ref_match = False
