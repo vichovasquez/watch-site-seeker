@@ -352,6 +352,13 @@ async def delete_site(site_id: str):
         raise HTTPException(status_code=404, detail="Site not found")
     return {"success": True}
 
+
+@app.post("/api/sites/toggle-all")
+async def toggle_all_sites(payload: Dict = Body(...)):
+    enabled = bool(payload.get("enabled", True))
+    sites = sites_manager.set_all_sites_enabled(enabled)
+    return {"success": True, "count": len(sites), "sites": sites}
+
 @app.post("/api/sites/{site_id}/toggle")
 async def toggle_site(site_id: str):
     updated = sites_manager.toggle_site(site_id)
