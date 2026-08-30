@@ -726,9 +726,10 @@
 
     // Initialize
     
-    // --- PROTECTED MARKETPLACES 1-CLICK LAUNCHPAD DYNAMIC UPDATER ---
+        // --- PROTECTED MARKETPLACES 1-CLICK LAUNCHPAD DYNAMIC UPDATER ---
     function updateProtectedLaunchpad(query) {
-      const activeQ = (query || (searchInput ? searchInput.value : '') || '').trim();
+      const searchInputEl = document.getElementById('searchInput');
+      const activeQ = (query || (searchInputEl ? searchInputEl.value : '') || '').trim();
       const badge = document.getElementById('launchpadActiveQueryBadge');
       if (badge) {
         badge.textContent = activeQ ? `Query: ${activeQ}` : 'Active Query: All Markets';
@@ -741,7 +742,7 @@
       if (btnC24) btnC24.href = `https://www.chrono24.com/search/index.htm?query=${qEncoded}&dosearch=true`;
 
       const btnRF = document.getElementById('lpBtnRolexForums');
-      if (btnRF) btnRF.href = `https://www.rolexforums.com/search.php?do=process&query=${qEncoded}`;
+      if (btnRF) btnRF.href = `https://www.google.com/search?q=site:rolexforums.com+${encodeURIComponent('"' + (activeQ || 'Rolex') + '"')}`;
 
       const btnWC = document.getElementById('lpBtnWatchCharts');
       if (btnWC) btnWC.href = `https://watchcharts.com/search?q=${qEncoded}`;
@@ -753,7 +754,7 @@
       if (btnBezel) btnBezel.href = `https://shop.getbezel.com/search?q=${qEncoded}`;
 
       const btnWP = document.getElementById('lpBtnWatchPatrol');
-      if (btnWP) btnWP.href = `https://www.watchpatrol.net/search?q=${qEncoded}`;
+      if (btnWP) btnWP.href = `https://www.watchpatrol.net/?query=${qEncoded}`;
     }
 
     async function init() {
@@ -1013,6 +1014,7 @@
     // Single Query Execution
     async function executeSearch(query) {
       if (!query) return;
+      updateProtectedLaunchpad(query);
       if (isSearching || isBatchRunning) {
         stopSearch();
       }
@@ -1162,6 +1164,7 @@
         for (let i = 0; i < totalRefs; i++) {
           if (!isBatchRunning) break;
           const ref = selectedList[i];
+          updateProtectedLaunchpad(ref);
           
           searchStatusText.innerHTML = `Searching Reference <strong class="text-amber-400">${i + 1}/${totalRefs}</strong>: <span class="font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded">${ref}</span> across ${enabledSites.length} websites...`;
           resultsSummaryText.textContent = `Searching ${i + 1} of ${totalRefs} references... (${currentResults.length} matches found so far)`;
@@ -1347,6 +1350,7 @@
       });
 
       searchInput.addEventListener('input', () => {
+        updateProtectedLaunchpad(searchInput.value);
         updateProtectedLaunchpad(searchInput.value);
         btnClearSearch.classList.toggle('hidden', !searchInput.value);
       });
