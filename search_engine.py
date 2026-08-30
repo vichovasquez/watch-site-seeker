@@ -37,7 +37,10 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 def extract_reference_tokens(query: str) -> List[str]:
-    """Extracts non-brand reference / model tokens."""
+    """
+    Extracts non-brand reference / model tokens.
+    Handles dots, hyphens, slashes (e.g. 'Lange 405.035' -> ['405.035', '405 035', '405-035', '405']).
+    """
     tokens = re.split(r'[/\\_\- ]+', query.strip())
     ref_tokens = []
     for t in tokens:
@@ -47,6 +50,13 @@ def extract_reference_tokens(query: str) -> List[str]:
         if len(t_clean) >= 3:
             if t_clean not in ref_tokens:
                 ref_tokens.append(t_clean)
+            if "." in t_clean:
+                dot_space = t_clean.replace(".", " ")
+                dot_hyphen = t_clean.replace(".", "-")
+                dot_base = t_clean.split(".")[0]
+                if dot_space not in ref_tokens: ref_tokens.append(dot_space)
+                if dot_hyphen not in ref_tokens: ref_tokens.append(dot_hyphen)
+                if dot_base not in ref_tokens and len(dot_base) >= 3: ref_tokens.append(dot_base)
             num_match = re.search(r'\d{3,}', t_clean)
             if num_match:
                 root_num = num_match.group(0)
@@ -55,22 +65,25 @@ def extract_reference_tokens(query: str) -> List[str]:
     return ref_tokens
 
 def normalize_watch_query(query: str) -> List[str]:
-    """Generates intelligent query variations."""
+    """
+    Generates intelligent query variations.
+    e.g. 'Lange 405.035' -> ['Lange 405 035', '405.035', '405 035', '405-035', '405', 'Lange 405.035']
+    """
     q = query.strip()
     variations = []
 
-    # 1. Cleaned version with spaces
-    cleaned_spaces = re.sub(r'[/\\_\-]+', ' ', q).strip()
+    # 1. Cleaned version with spaces replacing all punctuation
+    cleaned_spaces = re.sub(r'[/\\_\-\.]+', ' ', q).strip()
     if cleaned_spaces:
         variations.append(cleaned_spaces)
 
-    # 2. Extract reference-only tokens
+    # 2. Extract reference-only tokens and variations
     ref_tokens = extract_reference_tokens(q)
     for rt in ref_tokens:
         if rt not in variations:
             variations.append(rt)
 
-    # 3. Base model before slash or hyphen
+    # 3. Base model before slash, hyphen, or dot
     if "/" in q:
         slash_p = q.split("/")[0].strip()
         if slash_p and slash_p not in variations and len(slash_p) >= 3:
@@ -95,7 +108,6 @@ def normalize_watch_query(query: str) -> List[str]:
 
 def calculate_match_score(query: str, title: str, description: str = "", url: str = "") -> float:
     q = query.lower().strip()
-    # Strip tracking query parameters from URL so tracking queries aren't falsely matched
     clean_url_path = url.split("?")[0].lower() if url else ""
     full_text = f"{title} {description} {clean_url_path}".lower()
     
@@ -117,6 +129,12 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
             if "/" in rt_low and rt_low.split("/")[0] in full_text:
                 has_ref_match = True
                 break
+            if "." in rt_low and rt_low.replace(".", "-") in full_text:
+                has_ref_match = True
+                break
+            if "." in rt_low and rt_low.replace(".", " ") in full_text:
+                has_ref_match = True
+                break
         if not has_ref_match:
             return 0.0
 
@@ -125,13 +143,13 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
         return 1.0
 
     # Cleaned query match
-    cleaned_q = re.sub(r'[/\\_\-]+', ' ', q).strip()
+    cleaned_q = re.sub(r'[/\\_\-\.]+', ' ', q).strip()
     if cleaned_q and cleaned_q in full_text:
         return 0.98
 
     # Reference token match
     for rt in ref_tokens:
-        if rt in full_text:
+        if rt in full_text or (len(rt) >= 3 and rt in clean_url_path):
             return 0.95
 
     return 0.0
