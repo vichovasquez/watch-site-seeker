@@ -447,18 +447,49 @@ from concurrent.futures import ThreadPoolExecutor
 SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=64)
 
 class MultiSiteSearcher:
-    def __init__(self, timeout: float = 3.5):
+    def __init__(self, timeout: float = 3.0):
         self.timeout = timeout
         self.executor = SEARCH_EXECUTOR
 
     async def search_site(self, site: Dict, query: str) -> Dict[str, Any]:
         """Runs search for a single site in a dedicated high-concurrency worker thread."""
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self.executor, sync_search_site, site, query, self.timeout)
+        try:
+            return await loop.run_in_executor(self.executor, sync_search_site, site, query, self.timeout)
+        except Exception as e:
+            return {
+                "site_id": site.get("id"),
+                "site_name": site.get("name"),
+                "site_url": site.get("url"),
+                "status": "error",
+                "matches_count": 0,
+                "products": [],
+                "error": str(e)
+            }
 
-    async def search_all(self, sites: List[Dict], query: str) -> List[Dict[str, Any]]:
-        """Searches all enabled sites concurrently across 64 high-concurrency worker threads."""
+    async def search_all(self, sites: List[Dict], query: str, max_total_wait: float = 4.5) -> List[Dict[str, Any]]:
+        """Searches all enabled sites concurrently with a strict deadline guarantee."""
         enabled_sites = [s for s in sites if s.get("enabled", True)]
-        tasks = [self.search_site(site, query) for site in enabled_sites]
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+        if not enabled_sites:
+            return []
+            
+        loop = asyncio.get_running_loop()
+        futures = [
+            loop.run_in_executor(self.executor, sync_search_site, site, query, self.timeout)
+            for site in enabled_sites
+        ]
+        
+        done, pending = await asyncio.wait(futures, timeout=max_total_wait)
+        for f in pending:
+            f.cancel()
+            
+        results = []
+        for f in done:
+            try:
+                res = f.result()
+                if isinstance(res, dict):
+                    results.append(res)
+            except Exception:
+                pass
+                
         return results
