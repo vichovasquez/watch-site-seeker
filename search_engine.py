@@ -6,6 +6,9 @@ import time
 import asyncio
 from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Optional
+from concurrent.futures import ThreadPoolExecutor
+
+SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=64)
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
@@ -384,66 +387,121 @@ def search_shopify_sync(base_url: str, query: str, original_query: str = "", tim
     html_url = f"{base_url}/search?q={encoded_q}&type=product&options%5Bprefix%5D=last"
     return scrape_html_search_sync(base_url, html_url, target_q, timeout=timeout)
 
-def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout: float = 8.0) -> List[Dict]:
+def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout: float = 6.0) -> List[Dict]:
     resp = fetch_url_sync(search_url, timeout=timeout)
     if resp.get("status") != 200 or not resp.get("text"):
         return []
-
-    soup = BeautifulSoup(resp["text"], "html.parser")
-    links = soup.find_all("a", href=re.compile(r'/products/|/product/|/watch/|/watches/|/item/'))
-    seen = set()
+    
+    html = resp["text"]
+    soup = BeautifulSoup(html, "html.parser")
     products = []
+    q_tokens = [t.strip().lower() for t in query.replace("-", " ").replace("/", " ").split() if len(t.strip()) > 1]
+    
+    # 1. Specialized Parser for WatchRecon
+    if "watchrecon.com" in base_url:
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            title_text = a.get_text(" ", strip=True)
+            if query.lower() in title_text.lower() and len(title_text) > 10:
+                p_url = urllib.parse.urljoin(base_url, href)
+                price_match = re.search(r'\$[\d,]+', title_text)
+                price = price_match.group(0) if price_match else "Inquire"
+                products.append({
+                    "title": title_text[:120],
+                    "url": p_url,
+                    "price": price,
+                    "image": ""
+                })
+        if products:
+            return products[:15]
 
-    for a in links:
-        href = a["href"]
-        clean_href = href.split("?")[0]
-        if clean_href in seen:
+    # 2. General / Japanese / Custom Dealer Extraction
+    card_selectors = [
+        ".product-card", ".product-item", ".grid-product", ".item-box", 
+        ".goods_item", ".c-card", ".p-item", ".item", ".c-productCard",
+        ".card", "article", ".product", "[data-product-id]"
+    ]
+    
+    items = []
+    for sel in card_selectors:
+        found = soup.select(sel)
+        if len(found) >= 2:
+            items = found
+            break
+            
+    if not items:
+        items = soup.find_all(["div", "li", "article"], class_=re.compile(r'product|item|goods|listing|card', re.I))
+
+    for item in items[:40]:
+        text = item.get_text(" ", strip=True)
+        text_lower = text.lower()
+        
+        matches_query = any(tok in text_lower for tok in q_tokens) if q_tokens else (query.lower() in text_lower)
+        if not matches_query:
             continue
-
-        title = clean_text(a.get_text())
-        if not title or len(title) < 4 or title.lower() in ("clear", "reset", "remove all", "view all"):
-            parent = a.find_parent(["div", "li", "article", "h3", "h2"])
-            if parent:
-                title = clean_text(parent.get_text())
-
-        if len(title) < 4:
+            
+        a_tag = item.find("a", href=True)
+        if not a_tag:
             continue
-
-        product_url = urllib.parse.urljoin(base_url, href)
-        score = calculate_match_score(query, title, "", product_url)
-
-        if score >= 0.70:
-            seen.add(clean_href)
-            card = a.find_parent(["li", "div", "article"])
-            price_str = "Inquire"
-            img_url = ""
-            if card:
-                price_elem = card.select_one(".price, .price__regular, .money, .amount, .product-price")
-                if price_elem:
-                    price_str = re.sub(r"\s+", " ", clean_text(price_elem.get_text()))
-                img_elem = card.find("img")
-                if img_elem:
-                    img_url = img_elem.get("src") or img_elem.get("data-src") or ""
-                    if img_url.startswith("//"):
-                        img_url = "https:" + img_url
-
-            products.append({
-                "title": title,
-                "price": price_str,
-                "url": product_url,
-                "image": img_url,
-                "vendor": "",
-                "score": round(score, 2),
-                "source": "HTML Scrape"
-            })
-            if len(products) >= 20:
+            
+        href = a_tag["href"]
+        if not href or href.startswith("javascript:") or href == "#":
+            continue
+        p_url = urllib.parse.urljoin(base_url, href)
+        
+        title = ""
+        for heading in item.find_all(["h2", "h3", "h4", "h5", "a"]):
+            h_text = heading.get_text(strip=True)
+            if any(tok in h_text.lower() for tok in q_tokens) and len(h_text) > 8:
+                title = h_text
                 break
-
-    return products
-
-from concurrent.futures import ThreadPoolExecutor
-
-SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=64)
+        if not title:
+            title = a_tag.get("title") or a_tag.get_text(strip=True)
+            
+        if not title or len(title) < 5 or "add to cart" in title.lower():
+            continue
+            
+        title = re.sub(r'\s+', ' ', title).strip()
+        
+        # Price extraction (USD, EUR, GBP, JPY ¥ / 円)
+        price = "Inquire"
+        price_match = re.search(r'(\$|€|£|¥)\s?[\d,]+(?:\.\d{2})?|([\d,]+)\s?円', text)
+        if price_match:
+            price = price_match.group(0).strip()
+            
+        # Image extraction
+        img_url = ""
+        img = item.find("img")
+        if img:
+            src = img.get("src") or img.get("data-src") or img.get("data-lazy") or img.get("srcset", "").split(",")[0].split(" ")[0]
+            if src and not src.startswith("data:"):
+                img_url = urllib.parse.urljoin(base_url, src)
+                
+        if not any(p["url"] == p_url for p in products):
+            products.append({
+                "title": title[:140],
+                "url": p_url,
+                "price": price,
+                "image": img_url
+            })
+            
+    if not products:
+        for a in soup.find_all("a", href=True):
+            txt = a.get_text(" ", strip=True)
+            if len(txt) > 12 and any(tok in txt.lower() for tok in q_tokens):
+                p_url = urllib.parse.urljoin(base_url, a["href"])
+                if any(ext in p_url.lower() for ext in [".html", "/item", "/goods", "/product", "/shop", "/watch"]):
+                    price_match = re.search(r'(\$|€|£|¥)\s?[\d,]+|([\d,]+)\s?円', txt)
+                    price = price_match.group(0).strip() if price_match else "Inquire"
+                    if not any(p["url"] == p_url for p in products):
+                        products.append({
+                            "title": txt[:140],
+                            "url": p_url,
+                            "price": price,
+                            "image": ""
+                        })
+                        
+    return products[:15]
 
 class MultiSiteSearcher:
     def __init__(self, timeout: float = 6.0):

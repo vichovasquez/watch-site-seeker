@@ -87,7 +87,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.bobswatches.com/shop?query={query}"
   },
   {
     "id": "site-011",
@@ -114,7 +114,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
-    "custom_search_url": ""
+    "custom_search_url": "https://burdeens.com/search?q={query}"
   },
   {
     "id": "site-014",
@@ -204,7 +204,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
-    "custom_search_url": ""
+    "custom_search_url": "https://elementintime.com/search?q={query}"
   },
   {
     "id": "site-024",
@@ -285,7 +285,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": "https://www.rasin.co.jp/SHOP/g14798/list.html?Search={query}"
+    "custom_search_url": "https://www.rasin.co.jp/SHOP/14798/list.html?Search={query}"
   },
   {
     "id": "site-033",
@@ -312,7 +312,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.grayandsons.com/search?q={query}"
   },
   {
     "id": "site-036",
@@ -330,7 +330,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://shop.hodinkee.com/search?q={query}"
   },
   {
     "id": "site-038",
@@ -384,7 +384,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": "https://www.kame-kichi.com/items?keyword={query}"
+    "custom_search_url": "https://www.kame-kichi.com/search?keyword={query}"
   },
   {
     "id": "site-044",
@@ -645,7 +645,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.the1916company.com/watches/?q={query}"
   },
   {
     "id": "site-073",
@@ -654,7 +654,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
-    "custom_search_url": ""
+    "custom_search_url": "https://thekeystone.com/search?q={query}"
   },
   {
     "id": "site-074",
@@ -843,7 +843,7 @@
     "enabled": true,
     "category": "Marketplace",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.watchrecon.com/?query={query}"
   },
   {
     "id": "site-095",
