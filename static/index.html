@@ -646,9 +646,10 @@
 
     async function fetchSites() {
       try {
-        const res = await fetch('/api/sites');
+        const res = await fetch('/api/sites', { credentials: 'same-origin' });
         const data = await res.json();
         currentSites = Array.isArray(data) ? data : (data.sites || []);
+        currentSites.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
         updateSitesUI();
       } catch (err) {
         console.error('Failed to load sites:', err);
