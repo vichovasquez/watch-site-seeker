@@ -920,6 +920,7 @@
 
       try {
         const response = await fetch(`/api/search/stream?query=${encodeURIComponent(query)}`, {
+          credentials: 'same-origin',
           signal: searchAbortController.signal
         });
 

@@ -442,16 +442,22 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
 
     return products
 
+from concurrent.futures import ThreadPoolExecutor
+
+SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=64)
+
 class MultiSiteSearcher:
-    def __init__(self, timeout: float = 8.0):
+    def __init__(self, timeout: float = 3.5):
         self.timeout = timeout
+        self.executor = SEARCH_EXECUTOR
 
     async def search_site(self, site: Dict, query: str) -> Dict[str, Any]:
-        """Runs search for a single site in a dedicated async thread."""
-        return await asyncio.to_thread(sync_search_site, site, query, self.timeout)
+        """Runs search for a single site in a dedicated high-concurrency worker thread."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self.executor, sync_search_site, site, query, self.timeout)
 
     async def search_all(self, sites: List[Dict], query: str) -> List[Dict[str, Any]]:
-        """Searches all enabled sites concurrently with anti-burst throttling."""
+        """Searches all enabled sites concurrently across 64 high-concurrency worker threads."""
         enabled_sites = [s for s in sites if s.get("enabled", True)]
         tasks = [self.search_site(site, query) for site in enabled_sites]
         results = await asyncio.gather(*tasks, return_exceptions=False)
