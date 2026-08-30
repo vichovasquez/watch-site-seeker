@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 Write-Host "===================================================" -ForegroundColor Cyan
 Write-Host "  VICHO'S WATCH FINDER - GOOGLE CLOUD DEPLOYMENT" -ForegroundColor Cyan
@@ -14,33 +14,27 @@ if (-not (Test-Path $gcloudBin)) {
 }
 
 Write-Host "[1/3] Checking Google Cloud Authentication..." -ForegroundColor Yellow
-$authOutput = & $gcloudBin auth list 2>&1 | Out-String
+Write-Host "Opening your browser to authenticate with your Google account (jvasquez8@gmail.com)..." -ForegroundColor Green
+Write-Host ""
 
-if ($authOutput -match "No credentialed accounts" -or -not ($authOutput -match "ACTIVE")) {
-    Write-Host ""
-    Write-Host "No active Google Cloud account detected." -ForegroundColor Yellow
-    Write-Host "Opening your browser to log in with jvasquez8@gmail.com..." -ForegroundColor Green
-    Write-Host ""
-    & $gcloudBin auth login --brief
-} else {
-    Write-Host "Authentication confirmed!" -ForegroundColor Green
-}
+cmd.exe /c "`"$gcloudBin`" auth login --brief"
 
 Write-Host ""
 Write-Host "[2/3] Configuring Cloud Run Region (us-central1)..." -ForegroundColor Yellow
-& $gcloudBin config set run/region us-central1
+cmd.exe /c "`"$gcloudBin`" config set run/region us-central1"
 
-$currentProject = & $gcloudBin config get-value project 2>&1 | Out-String
-$currentProject = $currentProject.Trim()
+Write-Host ""
+Write-Host "Checking active Google Cloud Project..." -ForegroundColor Yellow
+$currentProject = cmd.exe /c "`"$gcloudBin`" config get-value project"
 
-if (-not $currentProject -or $currentProject -match "\(unset\)") {
+if (-not $currentProject -or $currentProject -match "\(unset\)" -or $currentProject -match "None") {
     Write-Host ""
-    Write-Host "Select your Google Cloud Project:" -ForegroundColor Yellow
-    & $gcloudBin projects list
+    Write-Host "Available Google Cloud Projects:" -ForegroundColor Cyan
+    cmd.exe /c "`"$gcloudBin`" projects list"
     Write-Host ""
     $proj = Read-Host "Enter your Google Cloud Project ID (e.g. my-project-123456)"
     if ($proj) {
-        & $gcloudBin config set project $proj.Trim()
+        cmd.exe /c "`"$gcloudBin`" config set project $($proj.Trim())"
     }
 }
 
@@ -49,13 +43,9 @@ Write-Host "[3/3] Deploying Vicho's Watch Finder to Google Cloud Run..." -Foregr
 $appDir = "C:\Users\home\.gemini\antigravity\scratch\site-search-app"
 Set-Location $appDir
 
-& $gcloudBin run deploy watch-finder `
-  --source . `
-  --region us-central1 `
-  --allow-unauthenticated `
-  --set-env-vars ALLOWED_EMAILS=jvasquez8@gmail.com
+cmd.exe /c "`"$gcloudBin`" run deploy watch-finder --source . --region us-central1 --allow-unauthenticated --set-env-vars ALLOWED_EMAILS=jvasquez8@gmail.com"
 
 Write-Host ""
 Write-Host "===================================================" -ForegroundColor Green
-Write-Host "  DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
+Write-Host "  DEPLOYMENT COMPLETED!" -ForegroundColor Green
 Write-Host "===================================================" -ForegroundColor Green
