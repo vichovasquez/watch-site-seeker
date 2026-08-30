@@ -187,6 +187,61 @@ async def search_sites(payload: Dict = Body(...)):
         "all_products": all_products
     }
 
+# --- BATCH SEARCH API ---
+@app.post("/api/batch-search")
+async def batch_search(payload: Dict = Body(...)):
+    references = payload.get("references", [])
+    if isinstance(references, str):
+        references = [r.strip() for r in references.split("\n") if r.strip()]
+    if not references:
+        raise HTTPException(status_code=400, detail="No references provided")
+        
+    selected_site_ids = payload.get("site_ids")
+    sites = sites_manager.load_sites()
+    if selected_site_ids:
+        sites_to_search = [s for s in sites if s["id"] in selected_site_ids and s.get("enabled", True)]
+    else:
+        sites_to_search = [s for s in sites if s.get("enabled", True)]
+        
+    if not sites_to_search:
+        return {"references": references, "total_matches": 0, "results_by_reference": {}, "all_products": []}
+
+    results_by_reference = {}
+    all_products = []
+    total_matches = 0
+
+    for ref in references:
+        res = await searcher.search_all(sites_to_search, ref)
+        ref_matches = sum(r.get("matches_count", 0) for r in res)
+        total_matches += ref_matches
+        
+        ref_products = []
+        for r in res:
+            for p in r.get("products", []):
+                p_copy = dict(p)
+                p_copy["site_name"] = r["site_name"]
+                p_copy["site_url"] = r["site_url"]
+                p_copy["matched_reference"] = ref
+                ref_products.append(p_copy)
+                all_products.append(p_copy)
+                
+        results_by_reference[ref] = {
+            "matches_count": ref_matches,
+            "site_results": res,
+            "products": ref_products
+        }
+
+    all_products.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    return {
+        "references": references,
+        "total_references": len(references),
+        "total_sites_searched": len(sites_to_search),
+        "total_matches": total_matches,
+        "results_by_reference": results_by_reference,
+        "all_products": all_products
+    }
+
 @app.get("/api/export/csv")
 async def export_csv(query: str = ""):
     sites = sites_manager.load_sites()
