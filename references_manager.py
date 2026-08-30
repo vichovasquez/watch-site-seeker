@@ -3,7 +3,7 @@ import os
 import urllib.request
 import re
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 REFERENCES_FILE = os.path.join(os.path.dirname(__file__), "references.json")
 DEFAULT_GDOC_FILE_ID = "15Jt2CXVU-crP8qJtV6lQ1B58fssOCtgkAvM4M-B_Tdg"
@@ -18,13 +18,11 @@ DEFAULT_REFERENCES = [
 
 def load_references() -> List[str]:
     if not os.path.exists(REFERENCES_FILE):
-        sync_references_from_google_doc()
         return DEFAULT_REFERENCES
     try:
         with open(REFERENCES_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if isinstance(data, list) and len(data) > 0:
-                # Support both strings and objects
                 clean = []
                 for item in data:
                     if isinstance(item, str):
@@ -72,8 +70,19 @@ def set_raw_references_text(raw_text: str) -> List[str]:
     save_references(lines)
     return load_references()
 
-def sync_references_from_google_doc(file_id: str = DEFAULT_GDOC_FILE_ID) -> Dict[str, Any]:
+def extract_file_id(url_or_id: Optional[str], default: str) -> str:
+    if not url_or_id:
+        return default
+    m = re.search(r'[\/=]([a-zA-Z0-9_-]{25,})', url_or_id)
+    if m:
+        return m.group(1)
+    if len(url_or_id.strip()) >= 25 and "/" not in url_or_id:
+        return url_or_id.strip()
+    return default
+
+def sync_references_from_google_doc(doc_url_or_id: Optional[str] = None) -> Dict[str, Any]:
     """Downloads watch references directly from Google Doc."""
+    file_id = extract_file_id(doc_url_or_id, DEFAULT_GDOC_FILE_ID)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
     }
@@ -85,11 +94,9 @@ def sync_references_from_google_doc(file_id: str = DEFAULT_GDOC_FILE_ID) -> Dict
             soup = BeautifulSoup(html, 'html.parser')
             raw_items = [p.get_text().strip() for p in soup.find_all(['p', 'li', 'td', 'span']) if p.get_text().strip()]
             
-            # Extract unique valid references
             unique_refs = []
             seen = set()
             for item in raw_items:
-                # Clean zero-width chars and clean text
                 item_clean = re.sub(r'[\ufeff\u200b\u200e\u200f]', '', item).strip()
                 if not item_clean or len(item_clean) < 3 or len(item_clean) > 80:
                     continue
@@ -105,5 +112,4 @@ def sync_references_from_google_doc(file_id: str = DEFAULT_GDOC_FILE_ID) -> Dict
                 return {"success": True, "count": len(DEFAULT_REFERENCES), "references": DEFAULT_REFERENCES}
     except Exception as e:
         print(f"Failed to sync references from Google Doc: {e}")
-        save_references(DEFAULT_REFERENCES)
-        return {"success": False, "error": str(e), "references": DEFAULT_REFERENCES}
+        return {"success": False, "error": str(e), "references": load_references()}

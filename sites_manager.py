@@ -4,10 +4,51 @@ import uuid
 import urllib.request
 import urllib.parse
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 SITES_FILE = os.path.join(os.path.dirname(__file__), "sites.json")
-GDOC_FILE_ID = "1QQ5nj6pgv90nfKKa93L4hpK10lato-7b"
+DEFAULT_GDOC_FILE_ID = "1QQ5nj6pgv90nfKKa93L4hpK10lato-7b"
+
+KNOWN_SHOPIFY_DOMAINS = {
+    "lvmwtimepieces.com",
+    "mywatchllc.com",
+    "huntingtoncompany.com",
+    "burdeens.com",
+    "perpetualtt.com",
+    "hodinkee.com",
+    "grandcaliber.com",
+    "elementintime.com",
+    "wristaficionado.com",
+    "analogshift.com",
+    "thekeystone.com",
+    "topperjewelers.com",
+    "vookum.com",
+    "aviandco.com",
+    "exquisitetimepieces.com",
+    "hammatimecollection.com",
+    "phigora.com",
+    "solanawatches.com",
+    "thestellariscollection.com",
+    "watchguys.com",
+    "wywatl.com",
+    "aiswatches.com",
+    "aslanwatches.com",
+    "belortimelegacy.com",
+    "chpremier.com",
+    "collectorswatches.com",
+    "dannysvintagewatches.com",
+    "empiretimeny.com",
+    "eurowatchoc.com",
+    "falkwatches.com",
+    "horologyxchange.com",
+    "jjtimepiececo.com",
+    "mttimepieces.net",
+    "pduggan.com",
+    "sylvans.com",
+    "teddybaldassarre.com",
+    "theluxurywatchcompany.com",
+    "watchesinl.com"
+}
 
 def load_sites() -> List[Dict]:
     if not os.path.exists(SITES_FILE):
@@ -55,12 +96,15 @@ def add_site(url: str, name: Optional[str] = None, category: str = "Dealer", cus
     if not cleaned_url:
         raise ValueError("Invalid URL provided")
     
-    # If already exists, return existing
     for s in sites:
         if clean_url(s.get("url", "")) == cleaned_url:
             return s
             
     site_name = name.strip() if name and name.strip() else extract_name_from_url(cleaned_url)
+    
+    # Auto-detect Shopify
+    is_shopify = any(dom in cleaned_url.lower() for dom in KNOWN_SHOPIFY_DOMAINS)
+    
     new_site = {
         "id": f"site-{str(uuid.uuid4())[:6]}",
         "name": site_name,
@@ -68,7 +112,7 @@ def add_site(url: str, name: Optional[str] = None, category: str = "Dealer", cus
         "enabled": True,
         "category": category.strip() or "Dealer",
         "custom_search_url": custom_search_url.strip(),
-        "platform": platform or "auto"
+        "platform": "shopify" if is_shopify else (platform or "auto")
     }
     sites.append(new_site)
     save_sites(sites)
@@ -150,49 +194,57 @@ def bulk_import_sites(raw_text: str, category: str = "Dealer") -> List[Dict]:
             continue
     return added
 
-def get_raw_sites_text() -> str:
-    sites = load_sites()
-    lines = []
-    for s in sites:
-        lines.append(f"{s['url']}")
-    return "\n".join(lines)
+def extract_file_id(url_or_id: Optional[str], default: str) -> str:
+    if not url_or_id:
+        return default
+    m = re.search(r'[\/=]([a-zA-Z0-9_-]{25,})', url_or_id)
+    if m:
+        return m.group(1)
+    if len(url_or_id.strip()) >= 25 and "/" not in url_or_id:
+        return url_or_id.strip()
+    return default
 
-def set_raw_sites_text(raw_text: str) -> List[Dict]:
-    lines = [l.strip() for l in raw_text.replace("\r\n", "\n").split("\n") if l.strip()]
-    new_sites = []
-    seen = set()
-    for idx, line in enumerate(lines):
-        clean = clean_url(line)
-        if clean and clean not in seen and "." in clean:
-            seen.add(clean)
-            name = extract_name_from_url(clean)
-            new_sites.append({
-                "id": f"site-{idx+1:03d}",
-                "name": name,
-                "url": clean,
-                "enabled": True,
-                "category": "Forum" if any(f in clean for f in ["forum", "reddit", "timezone", "recon", "patrol"]) else "Dealer",
-                "platform": "shopify" if any(s in clean for s in ["lvmwtimepieces", "hodinkee", "vookum", "grandcaliber", "teddybaldassarre", "wolvyn", "mentawatches", "windvintage", "thekeystone", "analogshift"]) else "auto",
-                "custom_search_url": ""
-            })
-    save_sites(new_sites)
-    return new_sites
-
-def sync_from_google_drive(file_id: str = GDOC_FILE_ID) -> Dict:
-    url = f"https://drive.google.com/uc?id={file_id}&export=download"
-    headers = {'User-Agent': 'Mozilla/5.0'}
+def sync_from_google_drive(doc_url_or_id: Optional[str] = None) -> Dict[str, Any]:
+    file_id = extract_file_id(doc_url_or_id, DEFAULT_GDOC_FILE_ID)
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+    }
     req = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=12) as resp:
             text = resp.read().decode('utf-8', errors='ignore')
             urls = re.findall(r'https?://[^\s<>"\',]+', text)
-            valid_urls = [u for u in urls if 'google.com' not in u and 'gstatic.com' not in u]
+            valid_urls = [u.rstrip('/') for u in urls if 'google.com' not in u and 'gstatic.com' not in u]
             if valid_urls:
-                # Add lvmwtimepieces if not in list
                 if not any("lvmwtimepieces" in u for u in valid_urls):
                     valid_urls.insert(0, "https://lvmwtimepieces.com")
-                new_sites = set_raw_sites_text("\n".join(valid_urls))
+                    
+                # Deduplicate and sort
+                seen = set()
+                new_sites = []
+                for idx, clean in enumerate(valid_urls):
+                    if clean and clean not in seen and "." in clean:
+                        seen.add(clean)
+                        name = extract_name_from_url(clean)
+                        is_shopify = any(dom in clean.lower() for dom in KNOWN_SHOPIFY_DOMAINS)
+                        new_sites.append({
+                            "id": f"site-{idx+1:03d}",
+                            "name": name,
+                            "url": clean,
+                            "enabled": True,
+                            "category": "Forum" if any(f in clean.lower() for f in ["forum", "reddit", "timezone", "recon", "patrol"]) else "Dealer",
+                            "platform": "shopify" if is_shopify else "auto",
+                            "custom_search_url": ""
+                        })
+                
+                # Natural alphabetical sort
+                new_sites = sorted(new_sites, key=lambda s: re.sub(r'^(the\s+|www\.)', '', s['name'].lower()))
+                save_sites(new_sites)
                 return {"success": True, "count": len(new_sites), "sites": new_sites}
-            return {"success": False, "error": "No valid website URLs found in document"}
+            return {"success": False, "error": "No valid website URLs found in Google Drive document"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# Alias for compatibility
+sync_from_google_doc = sync_from_google_drive
