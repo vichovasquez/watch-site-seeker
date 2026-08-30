@@ -447,7 +447,7 @@ from concurrent.futures import ThreadPoolExecutor
 SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=64)
 
 class MultiSiteSearcher:
-    def __init__(self, timeout: float = 3.0):
+    def __init__(self, timeout: float = 6.0):
         self.timeout = timeout
         self.executor = SEARCH_EXECUTOR
 
@@ -467,7 +467,7 @@ class MultiSiteSearcher:
                 "error": str(e)
             }
 
-    async def search_all(self, sites: List[Dict], query: str, max_total_wait: float = 4.5) -> List[Dict[str, Any]]:
+    async def search_all(self, sites: List[Dict], query: str, max_total_wait: float = 8.0) -> List[Dict[str, Any]]:
         """Searches all enabled sites concurrently with a strict deadline guarantee."""
         enabled_sites = [s for s in sites if s.get("enabled", True)]
         if not enabled_sites:
