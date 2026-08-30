@@ -80,6 +80,198 @@ def clean_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
+
+# --- CURRENCY CONVERSION & TRANSLATION ENGINE ---
+EXCHANGE_RATES = {
+    "JPY": 0.0068,  # 1 JPY = $0.0068 USD (~147 JPY/USD)
+    "EUR": 1.08,    # 1 EUR = $1.08 USD
+    "GBP": 1.30,    # 1 GBP = $1.30 USD
+    "CHF": 1.15,    # 1 CHF = $1.15 USD
+    "CAD": 0.74,    # 1 CAD = $0.74 USD
+    "AUD": 0.66     # 1 AUD = $0.66 USD
+}
+
+TRANSLATION_MAP = [
+    # Japanese Brands & Models
+    (r'ロレックス', 'Rolex'),
+    (r'パテック\s*フィリップ', 'Patek Philippe'),
+    (r'オーデマ\s*ピゲ', 'Audemars Piguet'),
+    (r'オメガ', 'Omega'),
+    (r'カルティエ', 'Cartier'),
+    (r'ヴァシュロン\s*コンスタンタン', 'Vacheron Constantin'),
+    (r'ランゲ\s*＆\s*ゾーネ|ランゲ\s*アンド\s*ゾーネ', 'A. Lange & Söhne'),
+    (r'チューダー', 'Tudor'),
+    (r'グランドセイコー', 'Grand Seiko'),
+    (r'デイトナ', 'Daytona'),
+    (r'サブマリーナー|サブマリーナ', 'Submariner'),
+    (r'GMTマスター', 'GMT-Master'),
+    (r'エクスプローラー', 'Explorer'),
+    (r'デイデイト', 'Day-Date'),
+    (r'デイトジャスト', 'Datejust'),
+    (r'スピードマスター', 'Speedmaster'),
+    (r'シーマスター', 'Seamaster'),
+    (r'ノーチラス', 'Nautilus'),
+    (r'アクアノート', 'Aquanaut'),
+    (r'カラトラバ', 'Calatrava'),
+    (r'ワールドタイム', 'World Time'),
+    (r'ロイヤルオーク', 'Royal Oak'),
+    (r'タンク', 'Tank'),
+    (r'サントス', 'Santos'),
+    
+    # Japanese Watch Terms
+    # Extended Japanese Watch Models & Terms
+    (r'チェリーニ', 'Cellini'),
+    (r'オイスター\s*パーペチュアル\s*デイト', 'Oyster Perpetual Date'),
+    (r'オイスター\s*パーペチュアル', 'Oyster Perpetual'),
+    (r'オイスター\s*デイト', 'Oysterdate'),
+    (r'スピードキング', 'Speedking'),
+    (r'サンダーバード', 'Thunderbird (Turn-O-Graph)'),
+    (r'コンビ', 'Two-Tone (Steel & Gold)'),
+    (r'ブレス(?:レット)?', 'Bracelet'),
+    (r'ダイヤル', 'Dial'),
+    (r'ベゼル', 'Bezel'),
+    (r'タペストリー', 'Tapestry'),
+    (r'シェル', 'Mother of Pearl'),
+    (r'リベットブレス', 'Rivet Bracelet'),
+    (r'ジュビリーブレス', 'Jubilee Bracelet'),
+    (r'オイスターブレス', 'Oyster Bracelet'),
+    (r'尾錠', 'Buckle / Clasp'),
+    (r'ギャラ(?:ンティ)?(?:カード)?|ギャラ付', 'with Guarantee Card / Papers'),
+    (r'冊子', 'Booklet'),
+    (r'タグ', 'Hang Tag'),
+    (r'ボーイズサイズ|ボーイズ', "Midsize / Boy's"),
+    (r'ノンデイト', 'No-Date'),
+    (r'オールトリチウム', 'All Tritium'),
+    (r'サービスダイヤル', 'Service Dial'),
+    (r'国際サービス', 'International Service'),
+    (r'修理', 'Service / Repair'),
+    (r'明細', 'Receipt / Invoice'),
+    (r'ケース', 'Case'),
+    (r'バイセロイケース', 'Viceroy Case'),
+    (r'クロノメーター', 'Chronometer'),
+    (r'クロノグラフ', 'Chronograph'),
+    (r'手巻(?:き)?', 'Manual Wind'),
+    (r'自動巻(?:き)?', 'Automatic'),
+    (r'クォーツ|クオーツ', 'Quartz'),
+    (r'メンズ', "Men's"),
+    (r'レディース', "Women's"),
+    (r'ユニセックス', 'Unisex'),
+    (r'箱[・\s]*保(?:証書)?あり|箱[・\s]*保(?:証書)?|箱あり|箱・保証書', 'Box & Papers'),
+    (r'保証書あり|保証書', 'Papers / Warranty'),
+    (r'箱', 'Box'),
+    (r'未使用品|新品', 'Brand New / Unworn'),
+    (r'中古品|中古', 'Pre-Owned'),
+    (r'極美品|美品', 'Excellent Condition'),
+    (r'18金無垢|18金', '18K Gold'),
+    (r'14金無垢|14金', '14K Gold'),
+    (r'金無垢', 'Solid Gold'),
+    (r'ピンクゴールド', 'Rose Gold'),
+    (r'ローズゴールド', 'Rose Gold'),
+    (r'イエローゴールド', 'Yellow Gold'),
+    (r'ホワイトゴールド', 'White Gold'),
+    (r'プラチナ', 'Platinum'),
+    (r'ステンレス(?:スチール)?', 'Stainless Steel'),
+    (r'ブラック文字盤|黒文字盤|黒文字ばん', 'Black Dial'),
+    (r'ホワイト文字盤|白文字盤', 'White Dial'),
+    (r'ブルー文字盤|青文字盤', 'Blue Dial'),
+    (r'シルバー文字盤|銀文字盤', 'Silver Dial'),
+    (r'緑文字盤|グリーン文字盤', 'Green Dial'),
+    (r'文字盤', 'Dial'),
+    (r'年製', ' Year'),
+    (r'税込', 'Incl. Tax'),
+    (r'税抜', 'Excl. Tax'),
+    (r'送料無料', 'Free Shipping'),
+    
+    # German Terms
+    (r'\bHerrenuhr\b', "Men's Watch"),
+    (r'\bDamenuhr\b', "Women's Watch"),
+    (r'\bArmbanduhr\b', 'Wristwatch'),
+    (r'\bAutomatik\b', 'Automatic'),
+    (r'\bHandaufzug\b', 'Manual Wind'),
+    (r'\bStahl\b', 'Steel'),
+    (r'\bEdelstahl\b', 'Stainless Steel'),
+    (r'\bGelbgold\b', 'Yellow Gold'),
+    (r'\bWeissgold\b|\bWeißgold\b', 'White Gold'),
+    (r'\bRoségold\b|\bRotgold\b', 'Rose Gold'),
+    (r'\bPlatin\b', 'Platinum'),
+    (r'\bLederband\b', 'Leather Strap'),
+    (r'\bStahlband\b', 'Steel Bracelet'),
+    (r'\bBox und Papiere\b', 'Box & Papers'),
+    (r'\bmit Box\b', 'with Box'),
+    (r'\bmit Papieren\b', 'with Papers'),
+    (r'\bSehr gut\b', 'Very Good Condition'),
+    (r'\bUngetragen\b', 'Unworn / Mint'),
+    (r'\bZifferblatt\b', 'Dial'),
+    (r'\bSchwarz\b', 'Black'),
+    (r'\bWeiss\b|\bWeiß\b', 'White'),
+    (r'\bBlau\b', 'Blue'),
+    (r'\bSilber\b', 'Silver'),
+    (r'\bGrün\b', 'Green'),
+    (r'\bVerkauft\b', 'Sold')
+]
+
+def convert_currency_to_usd(price_str: str) -> str:
+    """Converts foreign currencies to USD while preserving the original price in parentheses."""
+    if not price_str or price_str == "Inquire" or "inquire" in price_str.lower():
+        return "Inquire"
+    
+    clean_p = price_str.strip()
+    if "USD (" in clean_p:
+        return clean_p
+    
+    # 1. Japanese Yen (¥ or ￥ or 円)
+    if any(sym in clean_p for sym in ["¥", "￥", "円"]):
+        digits = re.sub(r'[^\d]', '', clean_p)
+        if digits:
+            val = int(digits)
+            usd = int(round(val * EXCHANGE_RATES["JPY"]))
+            return f"${usd:,} USD ({clean_p})"
+            
+    # 2. Euros (€)
+    if "€" in clean_p or "eur" in clean_p.lower():
+        num_str = re.sub(r'[^\d,\.]', '', clean_p)
+        num_str = num_str.replace('.', '').replace(',', '.') if (',' in num_str and '.' in num_str) or (',' in num_str and len(num_str.split(',')[-1]) == 2) else num_str.replace(',', '')
+        try:
+            val = float(num_str)
+            usd = int(round(val * EXCHANGE_RATES["EUR"]))
+            return f"${usd:,} USD ({clean_p})"
+        except ValueError:
+            pass
+
+    # 3. British Pounds (£)
+    if "£" in clean_p or "gbp" in clean_p.lower():
+        num_str = re.sub(r'[^\d\.]', '', clean_p.replace(',', ''))
+        try:
+            val = float(num_str)
+            usd = int(round(val * EXCHANGE_RATES["GBP"]))
+            return f"${usd:,} USD ({clean_p})"
+        except ValueError:
+            pass
+
+    # 4. Swiss Francs (CHF)
+    if "chf" in clean_p.lower():
+        num_str = re.sub(r'[^\d\.]', '', clean_p.replace(',', '').replace("'", ""))
+        try:
+            val = float(num_str)
+            usd = int(round(val * EXCHANGE_RATES["CHF"]))
+            return f"${usd:,} USD ({clean_p})"
+        except ValueError:
+            pass
+
+    return clean_p
+
+def translate_to_english(text: str) -> str:
+    """Translates foreign titles and watch terminology into clean English."""
+    if not text:
+        return ""
+    t = text
+    for pattern, repl in TRANSLATION_MAP:
+        t = re.sub(pattern, repl, t, flags=re.IGNORECASE)
+    t = re.sub(r'[\r\n\t]+', ' ', t)
+    t = re.sub(r'\s{2,}', ' ', t).strip()
+    return t
+
+
 def extract_reference_tokens(query: str) -> List[str]:
     """
     Extracts non-brand reference / model tokens.
@@ -405,11 +597,11 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
             if query.lower() in title_text.lower() and len(title_text) > 10:
                 p_url = urllib.parse.urljoin(base_url, href)
                 price_match = re.search(r'\$[\d,]+', title_text)
-                price = price_match.group(0) if price_match else "Inquire"
+                price = convert_currency_to_usd(price_match.group(0)) if price_match else "Inquire"
                 products.append({
                     "title": title_text[:120],
                     "url": p_url,
-                    "price": price,
+                    "price": convert_currency_to_usd(price),
                     "image": ""
                 })
         if products:
@@ -465,9 +657,9 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
         
         # Price extraction (USD, EUR, GBP, JPY ¥ / 円)
         price = "Inquire"
-        price_match = re.search(r'(\$|€|£|¥)\s?[\d,]+(?:\.\d{2})?|([\d,]+)\s?円', text)
+        price_match = re.search(r'(\$|€|£|¥|￥)\s?[\d,]+(?:\.\d{2})?|([\d,]+)\s?円', text + ' ' + title)
         if price_match:
-            price = price_match.group(0).strip()
+            price = convert_currency_to_usd(price_match.group(0).strip())
             
         # Image extraction
         img_url = ""
@@ -479,9 +671,9 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
                 
         if not any(p["url"] == p_url for p in products):
             products.append({
-                "title": title[:140],
+                "title": translate_to_english(title)[:140],
                 "url": p_url,
-                "price": price,
+                "price": convert_currency_to_usd(price),
                 "image": img_url
             })
             
@@ -492,12 +684,12 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
                 p_url = urllib.parse.urljoin(base_url, a["href"])
                 if any(ext in p_url.lower() for ext in [".html", "/item", "/goods", "/product", "/shop", "/watch"]):
                     price_match = re.search(r'(\$|€|£|¥)\s?[\d,]+|([\d,]+)\s?円', txt)
-                    price = price_match.group(0).strip() if price_match else "Inquire"
+                    price = convert_currency_to_usd(price_match.group(0).strip()) if price_match else "Inquire"
                     if not any(p["url"] == p_url for p in products):
                         products.append({
-                            "title": txt[:140],
+                            "title": translate_to_english(txt)[:140],
                             "url": p_url,
-                            "price": price,
+                            "price": convert_currency_to_usd(price),
                             "image": ""
                         })
                         
