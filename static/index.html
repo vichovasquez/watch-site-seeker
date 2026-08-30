@@ -262,19 +262,17 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <!-- Quick Inline Add Input -->
-          <div class="flex items-center gap-1.5 flex-1 sm:flex-initial">
-            <input 
-              type="text" 
-              id="inlineAddUrl" 
-              placeholder="https://example-watch-dealer.com" 
-              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 w-full sm:w-64 focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-            <button id="btnInlineAdd" class="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs whitespace-nowrap transition">
-              + Add Site
-            </button>
-          </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Sync from Google Doc -->
+          <button 
+            type="button" 
+            id="btnSyncSiteGdoc" 
+            class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
+            title="Sync & Reload Websites from Google Doc"
+          >
+            <i class="fa-brands fa-google-drive text-emerald-400"></i>
+            <span class="hidden sm:inline">Sync Doc</span>
+          </button>
 
           <!-- Toggle Inline Editor -->
           <button id="btnToggleEditor" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition">
@@ -324,6 +322,19 @@
 
           <div class="flex items-center gap-2">
             <input type="text" id="siteFilterInput" placeholder="Filter websites..." class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 w-44 focus:outline-none focus:ring-1 focus:ring-amber-500">
+            
+            <!-- Quick Inline Add Website -->
+            <div class="flex items-center gap-1">
+              <input 
+                type="text" 
+                id="inlineAddUrl" 
+                placeholder="https://site.com" 
+                class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 w-36 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+              <button id="btnInlineAdd" class="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs whitespace-nowrap transition">
+                + Add
+              </button>
+            </div>
           </div>
         </div>
 
@@ -569,6 +580,7 @@
     const sortSelect = document.getElementById('sortSelect');
     const btnExportCsv = document.getElementById('btnExportCsv');
     const btnSyncGdoc = document.getElementById('btnSyncGdoc');
+    const btnSyncSiteGdoc = document.getElementById('btnSyncSiteGdoc');
 
     // References DOM Elements
     const refSelectionBadge = document.getElementById('refSelectionBadge');
@@ -1323,6 +1335,7 @@
       // Reset Websites to Google Doc
       btnResetToGdoc.addEventListener('click', syncFromGoogleDoc);
       btnSyncGdoc.addEventListener('click', syncFromGoogleDoc);
+      if (btnSyncSiteGdoc) btnSyncSiteGdoc.addEventListener('click', syncFromGoogleDoc);
 
       async function syncFromGoogleDoc() {
         if (!confirm('Sync websites list directly from Google Drive document?')) return;
