@@ -852,19 +852,29 @@
 
     // Stop Search Execution
     
-    function stopFlashingPills() {
+    
+    function finalizeSitePills(siteMatchesMap) {
       if (!sitePillsContainer) return;
-      const animatedElements = sitePillsContainer.querySelectorAll('.animate-ping, .animate-pulse');
-      animatedElements.forEach(el => {
-        el.classList.remove('animate-ping', 'animate-pulse');
-        el.classList.add('bg-slate-600');
-      });
-      // Ensure all pills without checkmarks become static clean pills
-      const pills = sitePillsContainer.querySelectorAll('div[id^="pill-"]');
-      pills.forEach(p => {
-        if (!p.querySelector('.fa-check')) {
-          p.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5 transition-all';
+      const enabledSites = currentSites.filter(s => s.enabled);
+      
+      enabledSites.forEach(s => {
+        const pill = document.getElementById(`pill-${s.id}`);
+        if (!pill) return;
+        const matchCount = siteMatchesMap ? (siteMatchesMap[s.id] || 0) : 0;
+        
+        if (matchCount > 0) {
+          pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
+          pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${s.name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${matchCount}</span>`;
+        } else {
+          pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
+          pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${s.name}</span>`;
         }
+      });
+
+      // Extra guarantee: strip ALL animation classes from all child elements in container
+      const leftoverAnimations = sitePillsContainer.querySelectorAll('.animate-ping, .animate-pulse');
+      leftoverAnimations.forEach(el => {
+        el.classList.remove('animate-ping', 'animate-pulse');
       });
     }
 
@@ -883,11 +893,10 @@
       btnStatusStopSearch.classList.add('hidden');
       document.getElementById('searchSpinner').classList.add('hidden');
       
-      stopFlashingPills();
+      finalizeSitePills(null);
     }
 
 
-    
     
     async function executeSearch(query) {
       if (!query) return;
@@ -930,6 +939,8 @@
         searchTimer.textContent = `${elapsed}s`;
       }, 100);
 
+      const siteMatchesMap = {};
+
       try {
         const res = await fetch('/api/search', {
           method: 'POST',
@@ -952,20 +963,14 @@
         prods.forEach(p => { p.matched_reference = query; });
         currentResults = prods;
 
-        // Solid non-blinking pills for all sites: green for matches, grey for 0 matches
-        enabledSites.forEach(s => {
-          const pill = document.getElementById(`pill-${s.id}`);
-          if (!pill) return;
-          const siteResults = (data.site_results || []).find(sr => sr.site_id === s.id);
-          const matches = siteResults ? (siteResults.products || []).length : 0;
-          if (matches > 0) {
-            pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
-            pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${s.name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${matches}</span>`;
-          } else {
-            pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
-            pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${s.name}</span>`;
-          }
-        });
+        if (data.site_results) {
+          data.site_results.forEach(sr => {
+            const matches = (sr.products || []).length;
+            if (matches > 0) {
+              siteMatchesMap[sr.site_id] = matches;
+            }
+          });
+        }
 
         totalMatchesBadge.textContent = currentResults.length;
         resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${data.total_sites_searched || enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
@@ -989,6 +994,7 @@
         btnStopSearch.classList.add('hidden');
         btnStatusStopSearch.classList.add('hidden');
         document.getElementById('searchSpinner').classList.add('hidden');
+        finalizeSitePills(siteMatchesMap);
       }
     }
 
