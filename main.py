@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, HTTPException, Body, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import uvicorn
 
 import sites_manager
@@ -152,7 +152,6 @@ async def login_page(request: Request):
 @app.get("/auth/google")
 async def auth_google(request: Request):
     if not GOOGLE_CLIENT_ID:
-        # Dev fallback when Google OAuth credentials not yet configured
         resp = RedirectResponse(url="/", status_code=303)
         resp.set_cookie(SESSION_COOKIE_NAME, create_session_token("jvasquez8@gmail.com"), max_age=86400*14, httponly=True)
         return resp
@@ -181,7 +180,6 @@ async def auth_callback(request: Request, code: Optional[str] = None, error: Opt
     if redirect_uri.startswith("http://") and "localhost" not in redirect_uri and "127.0.0.1" not in redirect_uri:
         redirect_uri = redirect_uri.replace("http://", "https://")
 
-    # Exchange authorization code for token
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
@@ -198,7 +196,6 @@ async def auth_callback(request: Request, code: Optional[str] = None, error: Opt
         token_json = token_resp.json()
         access_token = token_json.get("access_token")
         
-        # Get user info
         user_resp = await client.get("https://www.googleapis.com/oauth2/v2/userinfo", headers={"Authorization": f"Bearer {access_token}"})
         if user_resp.status_code != 200:
             return RedirectResponse(url="/auth/login?error=userinfo_failed", status_code=303)
@@ -413,6 +410,30 @@ async def sync_references_gdoc(payload: Optional[Dict] = Body(default=None)):
     res = references_manager.sync_references_from_google_doc(doc_url)
     return res
 
+@app.post("/api/search")
+async def search_endpoint(payload: Dict = Body(...)):
+    query = payload.get("query", "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+        
+    sites = sites_manager.load_sites()
+    enabled_sites = [s for s in sites if s.get("enabled", True)]
+    
+    results = await searcher.search_all(enabled_sites, query)
+    
+    all_products = []
+    for r in results:
+        for p in r.get("products", []):
+            all_products.append(p)
+            
+    return {
+        "query": query,
+        "total_sites_searched": len(enabled_sites),
+        "total_matches": len(all_products),
+        "site_results": results,
+        "all_products": all_products
+    }
+
 @app.get("/api/search/stream")
 async def search_stream(query: str):
     if not query.strip():
@@ -423,21 +444,9 @@ async def search_stream(query: str):
     
     async def event_generator():
         yield f"data: {json.dumps({'type': 'init', 'total_sites': len(enabled_sites), 'query': query})}\n\n"
-        for site in enabled_sites:
-            try:
-                res = await searcher.search_site(site, query)
-                yield f"data: {json.dumps({'type': 'site_result', 'data': res})}\n\n"
-            except Exception as e:
-                err_payload = {
-                    "site_id": site.get("id"),
-                    "site_name": site.get("name"),
-                    "site_url": site.get("url"),
-                    "status": "error",
-                    "matches_count": 0,
-                    "products": [],
-                    "error": str(e)
-                }
-                yield f"data: {json.dumps({'type': 'site_result', 'data': err_payload})}\n\n"
+        results = await searcher.search_all(enabled_sites, query)
+        for res in results:
+            yield f"data: {json.dumps({'type': 'site_result', 'data': res})}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
         
     return StreamingResponse(
