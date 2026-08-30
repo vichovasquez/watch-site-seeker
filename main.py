@@ -4,6 +4,7 @@ import csv
 import io
 import urllib.parse
 import httpx
+import asyncio
 from fastapi import FastAPI, Request, HTTPException, Body, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +18,7 @@ from search_engine import MultiSiteSearcher
 import auth
 from auth import AuthMiddleware, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS, create_session_token, verify_session_token, SESSION_COOKIE_NAME, get_current_user_email
 
-app = FastAPI(title="Vicho's Watch Finder", version="2.5.0")
+app = FastAPI(title="Vicho's Watch Finder", version="2.6.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,7 +46,6 @@ async def login_page(request: Request):
     if user_email and user_email in ALLOWED_EMAILS:
         return RedirectResponse(url="/", status_code=303)
         
-    client_id = GOOGLE_CLIENT_ID
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -352,7 +352,6 @@ async def delete_site(site_id: str):
         raise HTTPException(status_code=404, detail="Site not found")
     return {"success": True}
 
-
 @app.post("/api/sites/toggle-all")
 async def toggle_all_sites(payload: Dict = Body(...)):
     enabled = bool(payload.get("enabled", True))
@@ -451,9 +450,22 @@ async def search_stream(query: str):
     
     async def event_generator():
         yield f"data: {json.dumps({'type': 'init', 'total_sites': len(enabled_sites), 'query': query})}\n\n"
-        results = await searcher.search_all(enabled_sites, query)
-        for res in results:
-            yield f"data: {json.dumps({'type': 'site_result', 'data': res})}\n\n"
+        
+        # Parallel progressive execution with asyncio.as_completed
+        tasks = [asyncio.create_task(searcher.search_site(site, query)) for site in enabled_sites]
+        for future in asyncio.as_completed(tasks):
+            try:
+                res = await future
+                yield f"data: {json.dumps({'type': 'site_result', 'data': res})}\n\n"
+            except Exception as e:
+                err_payload = {
+                    "status": "error",
+                    "matches_count": 0,
+                    "products": [],
+                    "error": str(e)
+                }
+                yield f"data: {json.dumps({'type': 'site_result', 'data': err_payload})}\n\n"
+                
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
         
     return StreamingResponse(

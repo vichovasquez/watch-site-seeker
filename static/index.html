@@ -876,6 +876,7 @@
     }
 
     // Single Query Execution
+    
     async function executeSearch(query) {
       if (!query) return;
       if (isSearching || isBatchRunning) {
@@ -904,7 +905,7 @@
       enabledSites.forEach(s => {
         const pill = document.createElement('div');
         pill.id = `pill-${s.id}`;
-        pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800/80 border border-slate-700 text-slate-400 flex items-center gap-1.5';
+        pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800/80 border border-slate-700 text-slate-400 flex items-center gap-1.5 transition-all';
         pill.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span><span>${s.name}</span>`;
         sitePillsContainer.appendChild(pill);
       });
@@ -915,69 +916,86 @@
         searchTimer.textContent = `${elapsed}s`;
       }, 100);
 
+      let completedSitesCount = 0;
+
       try {
-        const res = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
+        const response = await fetch(`/api/search/stream?query=${encodeURIComponent(query)}`, {
           signal: searchAbortController.signal
         });
 
-        const data = await res.json();
-        clearInterval(timerInterval);
-        const finalElapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
-        searchTimer.textContent = `${finalElapsed}s`;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        const prods = data.all_products || [];
-        prods.forEach(p => { p.matched_reference = query; });
-        currentResults = prods;
-        
-        totalMatchesBadge.textContent = data.total_matches || 0;
-        resultsSummaryText.textContent = `Found ${data.total_matches} matching items across ${data.total_sites_searched} websites in ${finalElapsed}s for "${query}"`;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
 
-        if (data.site_results) {
-          data.site_results.forEach(sr => {
-            const pill = document.getElementById(`pill-${sr.site_id}`);
-            if (pill) {
-              if (sr.status === 'success') {
-                if (sr.matches_count > 0) {
-                  pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1.5';
-                  pill.innerHTML = `<i class="fa-solid fa-check text-[9px]"></i><span>${sr.site_name}</span> <span class="bg-emerald-500/30 px-1.5 py-0.1 rounded-full font-bold text-[9px]">${sr.matches_count}</span>`;
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.replace(/^data:\s*/, '').trim();
+            if (!jsonStr) continue;
+
+            try {
+              const event = JSON.parse(jsonStr);
+              if (event.type === 'site_result') {
+                const sr = event.data;
+                completedSitesCount++;
+                
+                const pill = document.getElementById(`pill-${sr.site_id}`);
+                const prods = sr.products || [];
+                
+                if (prods.length > 0) {
+                  if (pill) {
+                    pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
+                    pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${sr.site_name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${prods.length}</span>`;
+                  }
+                  
+                  prods.forEach(p => {
+                    p.matched_reference = query;
+                    currentResults.push(p);
+                    appendProductCard(p);
+                  });
                 } else {
-                  pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800/30 border border-slate-700/40 text-slate-500 flex items-center gap-1.5';
-                  pill.innerHTML = `<span>${sr.site_name}</span> <span class="text-[9px]">0</span>`;
+                  if (pill) {
+                    pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
+                    pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${sr.site_name}</span>`;
+                  }
                 }
-              } else {
-                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center gap-1.5';
-                pill.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-[9px]"></i><span>${sr.site_name}</span>`;
+
+                totalMatchesBadge.textContent = currentResults.length;
+                resultsSummaryText.textContent = `Found ${currentResults.length} matching items (${completedSitesCount}/${enabledSites.length} websites checked)...`;
+              } else if (event.type === 'done') {
+                clearInterval(timerInterval);
+                const finalElapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
+                searchTimer.textContent = `${finalElapsed}s`;
+                resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
+                populateFilterDropdowns();
               }
+            } catch (err) {
+              console.error('Error parsing SSE event:', err);
             }
-          });
+          }
         }
 
-        searchStatusText.innerHTML = `<span class="text-emerald-400 font-bold">Search complete!</span> Found ${data.total_matches} matches for "${query}".`;
-        document.getElementById('searchSpinner').classList.add('hidden');
-
-        renderResults();
-
-      } catch (err) {
-        clearInterval(timerInterval);
-        if (err.name === 'AbortError') {
-          console.log('Search aborted');
-        } else {
-          searchStatusText.textContent = `Search error: ${err.message}`;
+        if (currentResults.length === 0) {
+          noMatchesState.classList.remove('hidden');
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('Search error:', e);
         }
       } finally {
-        isSearching = false;
-        searchAbortController = null;
-        btnSearch.classList.remove('hidden');
-        btnStopSearch.classList.add('hidden');
-        btnStatusStopSearch.classList.add('hidden');
+        stopSearch();
       }
     }
 
-    // Multi-Select Batch Search Execution
-    async function executeSelectedBatchSearch() {
+
+async function executeSelectedBatchSearch() {
       const selectedList = Array.from(selectedReferences);
       if (selectedList.length === 0) {
         alert('Please select at least one watch reference from your watchlist.');
@@ -1068,6 +1086,58 @@
         btnStatusStopSearch.classList.add('hidden');
       }
     }
+
+    
+    function appendProductCard(p) {
+      emptyState.classList.add('hidden');
+      noMatchesState.classList.add('hidden');
+
+      const card = document.createElement('div');
+      card.className = 'glass-card rounded-2xl overflow-hidden flex flex-col justify-between hover:border-amber-500/40 transition duration-300 hover:shadow-xl group transform translate-y-2 opacity-0';
+      
+      const scorePercent = Math.round((p.score || 0.8) * 100);
+      const scoreBadgeColor = scorePercent >= 90 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+
+      const imageHtml = p.image 
+        ? `<div class="w-full h-48 bg-slate-900 overflow-hidden relative"><img src="${p.image}" alt="${p.title}" class="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300" onerror="this.parentElement.style.display='none'"></div>`
+        : `<div class="w-full h-24 bg-gradient-to-br from-slate-900 to-slate-950 flex items-center justify-center text-slate-700 text-3xl"><i class="fa-solid fa-clock"></i></div>`;
+
+      card.innerHTML = `
+        <div>
+          ${imageHtml}
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 border border-slate-700 text-amber-400">
+                <i class="fa-solid fa-store text-[10px]"></i> ${p.site_name || 'Dealer'}
+              </span>
+              ${p.matched_reference ? `<span class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/30 text-amber-300">${p.matched_reference}</span>` : ''}
+            </div>
+            <h3 class="font-bold text-slate-100 text-base leading-snug line-clamp-2 mb-2 group-hover:text-amber-400 transition" title="${p.title}">
+              ${p.title}
+            </h3>
+          </div>
+        </div>
+        <div class="p-5 pt-0 border-t border-slate-800/80 mt-2">
+          <div class="flex items-center justify-between pt-3">
+            <div>
+              <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Price</div>
+              <div class="text-lg font-black ${p.price && p.price !== 'Inquire' ? 'text-emerald-400' : 'text-slate-400'}">
+                ${p.price || 'Inquire'}
+              </div>
+            </div>
+            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md hover:shadow-amber-500/20 transition transform hover:-translate-y-0.5">
+              View Watch <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+          </div>
+        </div>
+      `;
+      resultsGrid.appendChild(card);
+      requestAnimationFrame(() => {
+        card.classList.remove('translate-y-2', 'opacity-0');
+        card.classList.add('translate-y-0', 'opacity-100');
+      });
+    }
+
 
     function renderResults() {
       resultsGrid.innerHTML = '';
