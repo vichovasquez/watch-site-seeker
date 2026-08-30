@@ -648,7 +648,7 @@
       try {
         const res = await fetch('/api/sites');
         const data = await res.json();
-        currentSites = data.sites || [];
+        currentSites = Array.isArray(data) ? data : (data.sites || []);
         updateSitesUI();
       } catch (err) {
         console.error('Failed to load sites:', err);
@@ -659,7 +659,7 @@
       try {
         const res = await fetch('/api/references');
         const data = await res.json();
-        currentReferences = data.references || [];
+        currentReferences = Array.isArray(data) ? data : (data.references || []);
         // Default: select all references
         selectedReferences = new Set(currentReferences);
         updateReferencesUI();
@@ -1179,7 +1179,7 @@
           btnSyncRefGdoc.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Syncing...';
           const res = await fetch('/api/references/sync-gdoc', { method: 'POST' });
           const data = await res.json();
-          currentReferences = data.references || [];
+          currentReferences = Array.isArray(data) ? data : (data.references || []);
           selectedReferences = new Set(currentReferences);
           updateReferencesUI();
           alert(`Synced ${data.count} references from Google Doc!`);
@@ -1211,7 +1211,7 @@
             body: JSON.stringify({ reference: ref })
           });
           const data = await res.json();
-          currentReferences = data.references || [];
+          currentReferences = Array.isArray(data) ? data : (data.references || []);
           selectedReferences.add(ref);
           inlineAddRefInput.value = '';
           updateReferencesUI();
@@ -1252,7 +1252,7 @@
             body: JSON.stringify({ raw_text })
           });
           const data = await res.json();
-          currentReferences = data.references || [];
+          currentReferences = Array.isArray(data) ? data : (data.references || []);
           selectedReferences = new Set(currentReferences);
           updateReferencesUI();
           refEditorContainer.classList.add('hidden');
@@ -1266,7 +1266,7 @@
         try {
           const res = await fetch('/api/references/sync-gdoc', { method: 'POST' });
           const data = await res.json();
-          currentReferences = data.references || [];
+          currentReferences = Array.isArray(data) ? data : (data.references || []);
           selectedReferences = new Set(currentReferences);
           rawRefsTextarea.value = currentReferences.join('\n');
           updateReferencesUI();
