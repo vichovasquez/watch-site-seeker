@@ -43,6 +43,14 @@ async def get_references():
     refs = references_manager.load_references()
     return {"references": refs, "count": len(refs)}
 
+@app.post("/api/references/sync-gdoc")
+async def sync_references_gdoc(payload: Dict = Body(default={})):
+    file_id = payload.get("file_id", "15Jt2CXVU-crP8qJtV6lQ1B58fssOCtgkAvM4M-B_Tdg")
+    res = references_manager.sync_references_from_google_doc(file_id)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Sync failed"))
+    return res
+
 @app.post("/api/references")
 async def save_references(payload: Dict = Body(...)):
     if "raw_text" in payload:
