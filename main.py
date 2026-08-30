@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional
 import uvicorn
 import sites_manager
+import references_manager
 from search_engine import MultiSiteSearcher
 
 app = FastAPI(title="Multi-Website Search & Matcher Engine")
@@ -21,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-searcher = MultiSiteSearcher(timeout=10.0)
+searcher = MultiSiteSearcher(timeout=8.0)
 
 # Serve static assets
 static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -35,6 +36,36 @@ async def serve_index():
         with open(index_path, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
     return HTMLResponse("<h1>Site Search App Running</h1>")
+
+# --- REFERENCES API ---
+@app.get("/api/references")
+async def get_references():
+    refs = references_manager.load_references()
+    return {"references": refs, "count": len(refs)}
+
+@app.post("/api/references")
+async def save_references(payload: Dict = Body(...)):
+    if "raw_text" in payload:
+        refs = references_manager.set_raw_references_text(payload["raw_text"])
+    elif "references" in payload:
+        references_manager.save_references(payload["references"])
+        refs = references_manager.load_references()
+    else:
+        raise HTTPException(status_code=400, detail="Missing raw_text or references array")
+    return {"success": True, "count": len(refs), "references": refs}
+
+@app.post("/api/references/add")
+async def add_reference(payload: Dict = Body(...)):
+    ref = payload.get("reference", "").strip()
+    if not ref:
+        raise HTTPException(status_code=400, detail="Reference text is required")
+    refs = references_manager.add_reference(ref)
+    return {"success": True, "count": len(refs), "references": refs}
+
+@app.delete("/api/references/{ref}")
+async def delete_reference(ref: str):
+    refs = references_manager.delete_reference(ref)
+    return {"success": True, "count": len(refs), "references": refs}
 
 # --- SITES API ---
 @app.get("/api/sites")
@@ -123,7 +154,7 @@ async def search_sites(payload: Dict = Body(...)):
     if not query:
         raise HTTPException(status_code=400, detail="Search query is required")
         
-    selected_site_ids = payload.get("site_ids") # Optional list of specific site IDs
+    selected_site_ids = payload.get("site_ids")
     sites = sites_manager.load_sites()
     
     if selected_site_ids:
