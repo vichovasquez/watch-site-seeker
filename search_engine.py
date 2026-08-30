@@ -11,6 +11,9 @@ DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
@@ -29,25 +32,19 @@ KNOWN_BRANDS: Dict[str, List[str]] = {
     "breitling": ["breitling", "navitimer", "superocean", "chronomat"],
     "iwc": ["iwc", "schaffhausen", "portugieser", "portofino"],
     "tudor": ["tudor", "black bay", "pelagos"],
-    "richard": ["richard", "mille"],
+    "richard": ["richard mille"],
     "panerai": ["panerai", "luminor", "radiomir"],
     "zenith": ["zenith", "el primero", "chronomaster"],
-    "tag": ["tag", "heuer", "carrera", "monaco", "aquaracer"],
-    "grand": ["grand seiko", "seiko"],
+    "tag": ["tag heuer", "heuer"],
+    "grand": ["grand seiko"],
     "chopard": ["chopard", "mille miglia", "alpine eagle"],
-    "bvlgari": ["bvlgari", "bulgari", "octo"],
-    "fp": ["fp journe", "journe"],
-    "girard": ["girard perregaux", "perregaux", "laureato"],
+    "bvlgari": ["bvlgari", "bulgari", "octo finissimo"],
+    "fp": ["fp journe", "f.p. journe", "journe"],
+    "girard": ["girard perregaux", "laureato"],
     "blancpain": ["blancpain", "fifty fathoms"],
-    "breguet": ["breguet"],
-    "glashutte": ["glashutte", "glashütte"]
+    "breguet": ["breguet", "marine", "tradition"],
+    "glashutte": ["glashutte original", "glashütte original"]
 }
-
-BRAND_KEYWORDS = set()
-for b, syns in KNOWN_BRANDS.items():
-    BRAND_KEYWORDS.add(b)
-    for s in syns:
-        BRAND_KEYWORDS.add(s)
 
 _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
@@ -71,7 +68,7 @@ def extract_reference_tokens(query: str) -> List[str]:
     ref_tokens = []
     for t in tokens:
         t_clean = t.strip().lower()
-        if not t_clean or t_clean in BRAND_KEYWORDS:
+        if not t_clean or any(t_clean == b or t_clean in syns for b, syns in KNOWN_BRANDS.items()):
             continue
         if len(t_clean) >= 3:
             if t_clean not in ref_tokens:
@@ -95,7 +92,7 @@ def extract_query_brands(query: str) -> List[str]:
     q_low = query.lower()
     brands = []
     for brand, synonyms in KNOWN_BRANDS.items():
-        if brand in q_low or any(s in q_low for s in synonyms):
+        if re.search(r'\b' + re.escape(brand) + r'\b', q_low) or any(re.search(r'\b' + re.escape(s) + r'\b', q_low) for s in synonyms):
             brands.append(brand)
     return brands
 
@@ -138,7 +135,8 @@ def normalize_watch_query(query: str) -> List[str]:
     # Filter out generic single brand names from variations
     filtered = []
     for v in variations:
-        if v.lower().strip() in BRAND_KEYWORDS:
+        v_low = v.lower().strip()
+        if any(v_low == b or v_low in syns for b, syns in KNOWN_BRANDS.items()):
             continue
         filtered.append(v)
 
@@ -152,14 +150,13 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     if not q or not full_text:
         return 0.0
 
-    # 1. Brand Consistency Validation:
-    # If the user queried for a brand (e.g. "Lange", "Cartier"), reject items clearly from another opposing brand
+    # 1. Brand Consistency Validation (with word boundaries)
     query_brands = extract_query_brands(query)
     if query_brands:
         for opposing_brand, syns in KNOWN_BRANDS.items():
             if opposing_brand not in query_brands:
-                if any(syn in full_text for syn in syns):
-                    has_target_brand = any(any(ts in full_text for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
+                if any(re.search(r'\b' + re.escape(syn) + r'\b', full_text) for syn in syns):
+                    has_target_brand = any(any(re.search(r'\b' + re.escape(ts) + r'\b', full_text) for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
                     if not has_target_brand:
                         return 0.0
 
@@ -203,7 +200,7 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
 
     return 0.0
 
-def fetch_url_sync(url: str, timeout: float = 8.0, retries: int = 1) -> Dict[str, Any]:
+def fetch_url_sync(url: str, timeout: float = 8.0, retries: int = 2) -> Dict[str, Any]:
     req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
     for attempt in range(retries + 1):
         try:
@@ -219,7 +216,9 @@ def fetch_url_sync(url: str, timeout: float = 8.0, retries: int = 1) -> Dict[str
                 }
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt < retries:
-                time.sleep(1.5)
+                # Cloudflare rate-limit backoff: wait and retry
+                backoff = 1.5 * (attempt + 1)
+                time.sleep(backoff)
                 continue
             return {"status": e.code, "error": str(e), "text": ""}
         except Exception as e:
@@ -407,7 +406,7 @@ class MultiSiteSearcher:
         return await asyncio.to_thread(sync_search_site, site, query, self.timeout)
 
     async def search_all(self, sites: List[Dict], query: str) -> List[Dict[str, Any]]:
-        """Searches all enabled sites concurrently in parallel threads."""
+        """Searches all enabled sites concurrently with anti-burst throttling."""
         enabled_sites = [s for s in sites if s.get("enabled", True)]
         tasks = [self.search_site(site, query) for site in enabled_sites]
         results = await asyncio.gather(*tasks, return_exceptions=False)
