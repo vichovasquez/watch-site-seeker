@@ -244,29 +244,28 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
 
     return 0.0
 
-def fetch_url_sync(url: str, timeout: float = 8.0, retries: int = 2) -> Dict[str, Any]:
-    req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
-    for attempt in range(retries + 1):
+def fetch_url_sync(url: str, timeout: float = 6.0, retries: int = 2) -> Dict[str, Any]:
+    """Synchronously fetches a URL with retries, backoff, and modern browser headers."""
+    last_err = None
+    for attempt in range(retries):
         try:
+            req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                content_type = resp.headers.get("content-type", "")
-                data = resp.read()
-                text = data.decode("utf-8", errors="ignore")
-                return {
-                    "status": resp.status,
-                    "content_type": content_type,
-                    "text": text,
-                    "url": resp.url
-                }
+                status = resp.status
+                content = resp.read()
+                charset = resp.headers.get_content_charset() or "utf-8"
+                text = content.decode(charset, errors="ignore")
+                return {"status": status, "text": text, "url": resp.url}
         except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < retries:
-                backoff = 1.5 * (attempt + 1)
-                time.sleep(backoff)
-                continue
-            return {"status": e.code, "error": str(e), "text": ""}
+            last_err = e
+            if e.code == 429:
+                time.sleep(0.4 * (attempt + 1))
+            elif e.code in (403, 404, 500):
+                break
         except Exception as e:
-            return {"status": 0, "error": str(e), "text": ""}
-    return {"status": 0, "error": "Max retries exceeded", "text": ""}
+            last_err = e
+            time.sleep(0.2)
+    return {"status": getattr(last_err, "code", 0), "text": "", "error": str(last_err)}
 
 def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, Any]:
     base_url = site["url"].rstrip("/")

@@ -48,7 +48,7 @@
     "id": "site-006",
     "name": "Avi & Co.",
     "url": "https://www.aviandco.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
@@ -78,7 +78,7 @@
     "enabled": true,
     "category": "Marketplace",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://shop.getbezel.com/search?q={query}"
   },
   {
     "id": "site-010",
@@ -96,7 +96,7 @@
     "enabled": true,
     "category": "Auction",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.bonhams.com/search/?q={query}"
   },
   {
     "id": "site-012",
@@ -141,13 +141,13 @@
     "enabled": true,
     "category": "Auction",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.christies.com/en/search?entry={query}"
   },
   {
     "id": "site-017",
     "name": "Chrono24",
     "url": "https://www.chrono24.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Marketplace",
     "platform": "auto",
     "custom_search_url": ""
@@ -195,7 +195,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://davidsw.com/?s={query}&post_type=product"
   },
   {
     "id": "site-023",
@@ -249,7 +249,7 @@
     "enabled": true,
     "category": "Marketplace",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://everywatch.com/search?query={query}"
   },
   {
     "id": "site-029",
@@ -276,7 +276,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://firekids.jp/products/list?name={query}"
   },
   {
     "id": "site-032",
@@ -285,7 +285,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.rasin.co.jp/SHOP/g14798/list.html?Search={query}"
   },
   {
     "id": "site-033",
@@ -294,7 +294,7 @@
     "enabled": true,
     "category": "Marketplace",
     "platform": "shopify",
-    "custom_search_url": ""
+    "custom_search_url": "https://grailzee.com/search?q={query}"
   },
   {
     "id": "site-034",
@@ -348,7 +348,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://housekihiroba.jp/shop/goods/search.aspx?keyword={query}"
   },
   {
     "id": "site-040",
@@ -366,7 +366,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.jackroad.co.jp/shop/goods/search.aspx?keyword={query}"
   },
   {
     "id": "site-042",
@@ -384,7 +384,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.kame-kichi.com/items?keyword={query}"
   },
   {
     "id": "site-044",
@@ -411,7 +411,7 @@
     "enabled": true,
     "category": "Marketplace",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://loupethis.com/search?q={query}"
   },
   {
     "id": "site-047",
@@ -447,7 +447,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.matthewbaininc.com/search?q={query}"
   },
   {
     "id": "site-051",
@@ -474,7 +474,7 @@
     "enabled": true,
     "category": "Auction",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.monacolegendauctions.com/auction-lots?search={query}"
   },
   {
     "id": "site-054",
@@ -519,7 +519,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.ocwatchguy.com/?s={query}&post_type=product"
   },
   {
     "id": "site-059",
@@ -570,7 +570,7 @@
     "id": "site-064",
     "name": "Rolex Forums",
     "url": "https://www.rolexforums.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Forum",
     "platform": "auto",
     "custom_search_url": ""
@@ -591,7 +591,7 @@
     "enabled": true,
     "category": "Auction",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.sothebys.com/en/search-results.html?query={query}"
   },
   {
     "id": "site-067",
@@ -600,7 +600,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://subdial.com/search?q={query}"
   },
   {
     "id": "site-068",
@@ -627,7 +627,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.takuyawatches.com/?s={query}&post_type=product"
   },
   {
     "id": "site-071",
@@ -687,7 +687,7 @@
     "id": "site-077",
     "name": "The Watch Info",
     "url": "https://thewatchinfo.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
@@ -696,7 +696,7 @@
     "id": "site-078",
     "name": "The Watch Pages",
     "url": "https://www.thewatchpages.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
@@ -714,7 +714,7 @@
     "id": "site-080",
     "name": "Tiny Jewel Box",
     "url": "https://www.tinyjewelbox.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
@@ -759,7 +759,7 @@
     "id": "site-085",
     "name": "WatchCharts",
     "url": "https://watchcharts.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Marketplace",
     "platform": "auto",
     "custom_search_url": ""
@@ -816,13 +816,13 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://watchnian.com/shop/goods/search.aspx?keyword={query}"
   },
   {
     "id": "site-092",
     "name": "WatchPatrol",
     "url": "https://www.watchpatrol.net",
-    "enabled": true,
+    "enabled": false,
     "category": "Marketplace",
     "platform": "auto",
     "custom_search_url": ""
@@ -831,7 +831,7 @@
     "id": "site-093",
     "name": "WatchPro USA",
     "url": "https://usa.watchpro.com",
-    "enabled": true,
+    "enabled": false,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
@@ -861,7 +861,7 @@
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
+    "custom_search_url": "https://www.windvintage.com/shop?s={query}"
   },
   {
     "id": "site-097",
