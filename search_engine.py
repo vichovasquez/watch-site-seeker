@@ -60,15 +60,16 @@ def extract_reference_tokens(query: str) -> List[str]:
     """
     Extracts non-brand reference / model tokens.
     Handles dots, hyphens, and slashes.
-    e.g. 'Lange 405.035' -> ['405.035', '405 035', '405-035', '405035']
-    e.g. 'Cartier 78086' -> ['78086']
-    e.g. '4200H/222A-B934' -> ['4200h', '4200', '222a', '222', 'b934']
+    Ignores pure dial/variant suffixes (e.g. '001', '0004', '010') as standalone tokens.
     """
     tokens = re.split(r'[/\\_\- ]+', query.strip())
     ref_tokens = []
     for t in tokens:
         t_clean = t.strip().lower()
         if not t_clean or any(t_clean == b or t_clean in syns for b, syns in KNOWN_BRANDS.items()):
+            continue
+        # Avoid treating pure dial/variant suffixes like '001', '010', '0004' as standalone ref tokens
+        if re.match(r'^0+\d+$', t_clean):
             continue
         if len(t_clean) >= 3:
             if t_clean not in ref_tokens:
@@ -216,7 +217,6 @@ def fetch_url_sync(url: str, timeout: float = 8.0, retries: int = 2) -> Dict[str
                 }
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt < retries:
-                # Cloudflare rate-limit backoff: wait and retry
                 backoff = 1.5 * (attempt + 1)
                 time.sleep(backoff)
                 continue
@@ -230,6 +230,7 @@ def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, 
     site_id = site.get("id")
     site_name = site.get("name", "Store")
     custom_search_url = site.get("custom_search_url", "")
+    platform = site.get("platform", "auto")
     
     cache_key = f"{base_url}::{query.strip().lower()}"
     now = time.time()
@@ -263,15 +264,16 @@ def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, 
             _CACHE_EXPIRY[cache_key] = now + 60.0
             return result_payload
 
-    # 2. Shopify Search (Suggest API & HTML Search)
-    for q_term in query_variations:
-        prods = search_shopify_sync(base_url, q_term, original_query=query, timeout=timeout)
-        if prods:
-            result_payload["products"] = prods
-            result_payload["matches_count"] = len(prods)
-            _SEARCH_CACHE[cache_key] = result_payload
-            _CACHE_EXPIRY[cache_key] = now + 60.0
-            return result_payload
+    # 2. Shopify Search (Suggest API & HTML Search) for all Shopify or Auto sites
+    if platform in ("shopify", "auto"):
+        for q_term in query_variations:
+            prods = search_shopify_sync(base_url, q_term, original_query=query, timeout=timeout)
+            if prods:
+                result_payload["products"] = prods
+                result_payload["matches_count"] = len(prods)
+                _SEARCH_CACHE[cache_key] = result_payload
+                _CACHE_EXPIRY[cache_key] = now + 60.0
+                return result_payload
 
     # 3. General HTML Search Fallbacks
     for q_term in query_variations[:2]:

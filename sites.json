@@ -23,7 +23,7 @@
     "url": "https://aiswatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -41,7 +41,7 @@
     "url": "https://aslanwatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -50,7 +50,7 @@
     "url": "https://belortimelegacy.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -59,7 +59,7 @@
     "url": "https://burdeens.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -68,7 +68,7 @@
     "url": "https://caseantiques.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -77,7 +77,7 @@
     "url": "https://chpremier.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -86,7 +86,7 @@
     "url": "https://collectability.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -95,7 +95,7 @@
     "url": "https://collectorswatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -104,7 +104,7 @@
     "url": "https://dannysvintagewatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -113,7 +113,7 @@
     "url": "https://davidsw.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -122,7 +122,7 @@
     "url": "https://elementintime.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -131,7 +131,7 @@
     "url": "https://empiretimeny.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -140,7 +140,7 @@
     "url": "https://eurowatchoc.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -149,7 +149,7 @@
     "url": "https://falkwatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -158,7 +158,7 @@
     "url": "https://firekids.jp/products/list?category_id=8",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -176,7 +176,7 @@
     "url": "https://horologyxchange.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -185,7 +185,7 @@
     "url": "https://housekihiroba.jp/shop",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -203,7 +203,7 @@
     "url": "https://jjtimepiececo.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -212,7 +212,7 @@
     "url": "https://mentawatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "shopify",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -221,7 +221,7 @@
     "url": "https://mttimepieces.net",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -230,7 +230,7 @@
     "url": "https://mywatchllc.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -239,7 +239,7 @@
     "url": "https://nywatchmarket.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -248,7 +248,7 @@
     "url": "https://pduggan.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -275,7 +275,7 @@
     "url": "https://sylvans.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -302,7 +302,7 @@
     "url": "https://theluxurywatchcompany.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -311,7 +311,7 @@
     "url": "https://topperjewelers.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -347,7 +347,7 @@
     "url": "https://watchesinl.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -365,7 +365,7 @@
     "url": "https://wolvyn.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "shopify",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -374,7 +374,7 @@
     "url": "https://worthytime.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -383,7 +383,7 @@
     "url": "https://wristaficionado.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -392,7 +392,7 @@
     "url": "https://wristcheck.com/us",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -419,7 +419,7 @@
     "url": "https://www.aviandco.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -428,7 +428,7 @@
     "url": "https://www.bobswatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -437,7 +437,7 @@
     "url": "https://www.bucherer.com/us/en",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -455,7 +455,7 @@
     "url": "https://www.europeanwatch.com/brand/rolex",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -464,7 +464,7 @@
     "url": "https://www.exquisitetimepieces.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -473,7 +473,7 @@
     "url": "https://www.hammatimecollection.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -491,7 +491,7 @@
     "url": "https://www.jackroad.co.jp/shop",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -500,7 +500,7 @@
     "url": "https://www.kame-kichi.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -509,7 +509,7 @@
     "url": "https://www.lenkersdorfer.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -518,7 +518,7 @@
     "url": "https://www.liljenquistbeckstead.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -536,7 +536,7 @@
     "url": "https://www.ocwatchguy.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -545,7 +545,7 @@
     "url": "https://www.perpetualtt.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -554,7 +554,7 @@
     "url": "https://www.phigora.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -563,7 +563,7 @@
     "url": "https://www.rasin.co.jp/contents/global_shop.html?ct=1781224583471",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -581,7 +581,7 @@
     "url": "https://www.solanawatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -590,7 +590,7 @@
     "url": "https://www.swisswatchexpo.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -599,7 +599,7 @@
     "url": "https://www.takuyawatches.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -608,7 +608,7 @@
     "url": "https://www.the1916company.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -617,7 +617,7 @@
     "url": "https://www.thestellariscollection.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -626,7 +626,7 @@
     "url": "https://www.timezone.com",
     "enabled": true,
     "category": "Forum",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -635,7 +635,7 @@
     "url": "https://www.tinyjewelbox.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -644,7 +644,7 @@
     "url": "https://www.triangleluxeco.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "wix",
     "custom_search_url": ""
   },
   {
@@ -653,7 +653,7 @@
     "url": "https://www.watchesofcharlotte.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "woocommerce",
     "custom_search_url": ""
   },
   {
@@ -662,7 +662,7 @@
     "url": "https://www.watchfinder.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -671,7 +671,7 @@
     "url": "https://www.watchguys.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
@@ -680,7 +680,7 @@
     "url": "https://www.watchpatrol.net",
     "enabled": true,
     "category": "Forum",
-    "platform": "auto",
+    "platform": "magento",
     "custom_search_url": ""
   },
   {
@@ -707,7 +707,7 @@
     "url": "https://www.windvintage.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "shopify",
+    "platform": "squarespace",
     "custom_search_url": ""
   },
   {
@@ -716,7 +716,7 @@
     "url": "https://www.wywatl.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   }
 ]
