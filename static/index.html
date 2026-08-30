@@ -851,6 +851,16 @@
     }
 
     // Stop Search Execution
+    function stopFlashingPills() {
+      if (sitePillsContainer) {
+        const animatedDots = sitePillsContainer.querySelectorAll('.animate-ping, .animate-pulse');
+        animatedDots.forEach(dot => {
+          dot.classList.remove('animate-ping', 'animate-pulse');
+          dot.classList.add('bg-slate-600');
+        });
+      }
+    }
+
     function stopSearch() {
       if (!isSearching && !isBatchRunning) return;
       
@@ -867,6 +877,8 @@
       btnStopSearch.classList.add('hidden');
       btnStatusStopSearch.classList.add('hidden');
       document.getElementById('searchSpinner').classList.add('hidden');
+      
+      stopFlashingPills();
       
       const elapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
       searchStatusText.innerHTML = `<span class="text-rose-400 font-bold"><i class="fa-solid fa-hand"></i> Search stopped (${elapsed}s).</span> Found ${currentResults.length} matches so far.`;
