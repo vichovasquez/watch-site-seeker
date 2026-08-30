@@ -400,6 +400,23 @@
         </div>
       </div>
 
+      
+      <!-- PROTECTED MARKETPLACES 1-CLICK LAUNCHPAD -->
+      <div id="protectedLaunchpad" class="glass-panel p-4 rounded-2xl border border-blue-500/30 bg-slate-900/80 shadow-lg flex flex-col gap-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            <span class="text-xs font-bold text-white uppercase tracking-wider">Protected Marketplaces Launchpad</span>
+            <span class="text-[11px] text-slate-400 hidden sm:inline">— 1-Click instant searches on bot-protected marketplaces</span>
+          </div>
+          <span id="launchpadActiveQueryBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Ready</span>
+        </div>
+
+        <div id="launchpadButtonsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          <!-- Buttons dynamically rendered here -->
+        </div>
+      </div>
+
       <!-- RESULTS GRID -->
       <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         <!-- Result Cards Rendered Here -->
@@ -651,6 +668,7 @@
         currentSites = Array.isArray(data) ? data : (data.sites || []);
         currentSites.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
         updateSitesUI();
+        updateProtectedLaunchpad('');
       } catch (err) {
         console.error('Failed to load sites:', err);
       }
@@ -835,6 +853,7 @@
         const site = currentSites.find(s => s.id === siteId);
         if (site) site.enabled = enabled;
         updateSitesUI();
+        updateProtectedLaunchpad('');
       } catch (err) {
         console.error('Failed to toggle site:', err);
       }
@@ -846,6 +865,7 @@
         await fetch(`/api/sites/${siteId}`, { method: 'DELETE' });
         currentSites = currentSites.filter(s => s.id !== siteId);
         updateSitesUI();
+        updateProtectedLaunchpad('');
       } catch (err) {
         console.error('Failed to delete site:', err);
       }
@@ -1391,6 +1411,7 @@
       btnSelectAll.addEventListener('click', async () => {
         currentSites.forEach(s => { s.enabled = true; });
         updateSitesUI();
+        updateProtectedLaunchpad('');
         try {
           await fetch('/api/sites/toggle-all', {
             method: 'POST',
@@ -1405,6 +1426,7 @@
       btnDeselectAll.addEventListener('click', async () => {
         currentSites.forEach(s => { s.enabled = false; });
         updateSitesUI();
+        updateProtectedLaunchpad('');
         try {
           await fetch('/api/sites/toggle-all', {
             method: 'POST',
