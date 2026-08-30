@@ -661,7 +661,7 @@
         const data = await res.json();
         currentReferences = Array.isArray(data) ? data : (data.references || []);
         // Default: select all references
-        selectedReferences = new Set(currentReferences);
+        selectedReferences = new Set(); // None selected by default
         updateReferencesUI();
       } catch (err) {
         console.error('Failed to load references:', err);
@@ -888,6 +888,7 @@
 
 
     
+    
     async function executeSearch(query) {
       if (!query) return;
       if (isSearching || isBatchRunning) {
@@ -908,9 +909,11 @@
       searchStatusSection.classList.remove('hidden');
       resultsGrid.innerHTML = '';
       currentResults = [];
-      
+      totalMatchesBadge.textContent = '0';
+
       const enabledSites = currentSites.filter(s => s.enabled);
       searchStatusText.textContent = `Searching ${enabledSites.length} websites in parallel for "${query}"...`;
+      resultsSummaryText.textContent = `Searching ${enabledSites.length} websites...`;
 
       sitePillsContainer.innerHTML = '';
       enabledSites.forEach(s => {
@@ -949,24 +952,20 @@
         prods.forEach(p => { p.matched_reference = query; });
         currentResults = prods;
 
-        // Update site pills with match counts
-        if (data.site_results) {
-          data.site_results.forEach(sr => {
-            const pill = document.getElementById(`pill-${sr.site_id}`);
-            const siteMatches = (sr.products || []).length;
-            if (pill) {
-              if (siteMatches > 0) {
-                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
-                pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${sr.site_name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${siteMatches}</span>`;
-              } else {
-                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
-                pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${sr.site_name}</span>`;
-              }
-            }
-          });
-        }
-
-        stopFlashingPills();
+        // Solid non-blinking pills for all sites: green for matches, grey for 0 matches
+        enabledSites.forEach(s => {
+          const pill = document.getElementById(`pill-${s.id}`);
+          if (!pill) return;
+          const siteResults = (data.site_results || []).find(sr => sr.site_id === s.id);
+          const matches = siteResults ? (siteResults.products || []).length : 0;
+          if (matches > 0) {
+            pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20';
+            pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${s.name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${matches}</span>`;
+          } else {
+            pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/60 border border-slate-800 text-slate-500 flex items-center gap-1.5';
+            pill.innerHTML = `<i class="fa-solid fa-circle-dot text-slate-600 text-[9px]"></i><span>${s.name}</span>`;
+          }
+        });
 
         totalMatchesBadge.textContent = currentResults.length;
         resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${data.total_sites_searched || enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
@@ -990,7 +989,6 @@
         btnStopSearch.classList.add('hidden');
         btnStatusStopSearch.classList.add('hidden');
         document.getElementById('searchSpinner').classList.add('hidden');
-        stopFlashingPills();
       }
     }
 
@@ -1234,7 +1232,7 @@ async function executeSelectedBatchSearch() {
 
       // Select All / Deselect All References
       btnSelectAllRefs.addEventListener('click', () => {
-        selectedReferences = new Set(currentReferences);
+        selectedReferences = new Set(); // None selected by default
         updateReferencesUI();
       });
 
@@ -1250,7 +1248,7 @@ async function executeSelectedBatchSearch() {
           const res = await fetch('/api/references/sync-gdoc', { method: 'POST' });
           const data = await res.json();
           currentReferences = Array.isArray(data) ? data : (data.references || []);
-          selectedReferences = new Set(currentReferences);
+          selectedReferences = new Set(); // None selected by default
           updateReferencesUI();
           alert(`Synced ${data.count} references from Google Doc!`);
         } catch (e) {
@@ -1323,7 +1321,7 @@ async function executeSelectedBatchSearch() {
           });
           const data = await res.json();
           currentReferences = Array.isArray(data) ? data : (data.references || []);
-          selectedReferences = new Set(currentReferences);
+          selectedReferences = new Set(); // None selected by default
           updateReferencesUI();
           refEditorContainer.classList.add('hidden');
           refEditorToggleText.textContent = 'Edit Multi-List';
@@ -1337,7 +1335,7 @@ async function executeSelectedBatchSearch() {
           const res = await fetch('/api/references/sync-gdoc', { method: 'POST' });
           const data = await res.json();
           currentReferences = Array.isArray(data) ? data : (data.references || []);
-          selectedReferences = new Set(currentReferences);
+          selectedReferences = new Set(); // None selected by default
           rawRefsTextarea.value = currentReferences.join('\n');
           updateReferencesUI();
         } catch (e) {
