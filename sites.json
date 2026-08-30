@@ -1,8 +1,8 @@
 [
   {
     "id": "site-001",
-    "name": "Affordableswisswatchesinc",
-    "url": "https://www.affordableswisswatchesinc.com",
+    "name": "The 1916 Company",
+    "url": "https://www.the1916company.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
@@ -10,8 +10,8 @@
   },
   {
     "id": "site-002",
-    "name": "Aiswatches",
-    "url": "https://aiswatches.com",
+    "name": "Affordable Swiss Watches",
+    "url": "https://www.affordableswisswatchesinc.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
@@ -19,8 +19,8 @@
   },
   {
     "id": "site-003",
-    "name": "Analogshift",
-    "url": "https://www.analogshift.com/collections/watches",
+    "name": "AIS Watches",
+    "url": "https://aiswatches.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
@@ -28,7 +28,16 @@
   },
   {
     "id": "site-004",
-    "name": "Ap Collection Scraper",
+    "name": "Analog:Shift",
+    "url": "https://www.analogshift.com/collections/watches",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-005",
+    "name": "AP Collection Scraper",
     "url": "https://ap-collection-scraper.vercel.app",
     "enabled": true,
     "category": "Dealer",
@@ -36,8 +45,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-005",
-    "name": "Aslanwatches",
+    "id": "site-006",
+    "name": "Aslan Watches",
     "url": "https://aslanwatches.com",
     "enabled": true,
     "category": "Dealer",
@@ -45,27 +54,18 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-006",
-    "name": "Aviandco",
+    "id": "site-007",
+    "name": "Avi & Co.",
     "url": "https://www.aviandco.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-007",
-    "name": "Belortimelegacy",
-    "url": "https://belortimelegacy.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
+    "platform": "auto",
     "custom_search_url": ""
   },
   {
     "id": "site-008",
-    "name": "Bobswatches",
-    "url": "https://www.bobswatches.com",
+    "name": "Bachmann & Scher",
+    "url": "https://www.bachmann-scher.de/en",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
@@ -73,6 +73,42 @@
   },
   {
     "id": "site-009",
+    "name": "Belor Time Legacy",
+    "url": "https://belortimelegacy.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-010",
+    "name": "Bezel",
+    "url": "https://shop.getbezel.com",
+    "enabled": true,
+    "category": "Marketplace",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-011",
+    "name": "Bob's Watches",
+    "url": "https://www.bobswatches.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-012",
+    "name": "Bonhams Auctioneers",
+    "url": "https://www.bonhams.com/watches",
+    "enabled": true,
+    "category": "Auction",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-013",
     "name": "Bucherer",
     "url": "https://www.bucherer.com/us/en",
     "enabled": true,
@@ -81,8 +117,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-010",
-    "name": "Burdeens",
+    "id": "site-014",
+    "name": "Burdeen's Jewelry",
     "url": "https://burdeens.com",
     "enabled": true,
     "category": "Dealer",
@@ -90,17 +126,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-011",
-    "name": "Caseantiques",
+    "id": "site-015",
+    "name": "Case Antiques",
     "url": "https://caseantiques.com",
     "enabled": true,
-    "category": "Dealer",
+    "category": "Auction",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-012",
-    "name": "Chpremier",
+    "id": "site-016",
+    "name": "CH Premier Jewelers",
     "url": "https://chpremier.com",
     "enabled": true,
     "category": "Dealer",
@@ -108,16 +144,25 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-013",
-    "name": "Chrono24",
-    "url": "https://www.chrono24.com",
+    "id": "site-017",
+    "name": "Christie's Watches",
+    "url": "https://www.christies.com/en/departments/watches-and-wristwatches",
     "enabled": true,
-    "category": "Dealer",
+    "category": "Auction",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-014",
+    "id": "site-018",
+    "name": "Chrono24",
+    "url": "https://www.chrono24.com",
+    "enabled": true,
+    "category": "Marketplace",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-019",
     "name": "Collectability",
     "url": "https://collectability.com",
     "enabled": true,
@@ -126,8 +171,26 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-015",
-    "name": "Collectorswatches",
+    "id": "site-020",
+    "name": "A Collected Man",
+    "url": "https://www.acollectedman.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-021",
+    "name": "Collecting Cars / Watches",
+    "url": "https://collecting.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-022",
+    "name": "Collectors Watches",
     "url": "https://collectorswatches.com",
     "enabled": true,
     "category": "Dealer",
@@ -135,8 +198,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-016",
-    "name": "Dannysvintagewatches",
+    "id": "site-023",
+    "name": "Danny's Vintage Watches",
     "url": "https://dannysvintagewatches.com",
     "enabled": true,
     "category": "Dealer",
@@ -144,8 +207,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-017",
-    "name": "Davidsw",
+    "id": "site-024",
+    "name": "DavidSW",
     "url": "https://davidsw.com",
     "enabled": true,
     "category": "Dealer",
@@ -153,8 +216,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-018",
-    "name": "Elementintime",
+    "id": "site-025",
+    "name": "Element in Time NYC",
     "url": "https://elementintime.com",
     "enabled": true,
     "category": "Dealer",
@@ -162,8 +225,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-019",
-    "name": "Empiretimeny",
+    "id": "site-026",
+    "name": "Empire Time NY",
     "url": "https://empiretimeny.com",
     "enabled": true,
     "category": "Dealer",
@@ -171,17 +234,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-020",
-    "name": "Europeanwatch",
-    "url": "https://www.europeanwatch.com/brand/rolex",
+    "id": "site-027",
+    "name": "Essential Watches",
+    "url": "https://www.essential-watches.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-021",
-    "name": "Eurowatchoc",
+    "id": "site-028",
+    "name": "Euro Watch OC",
     "url": "https://eurowatchoc.com",
     "enabled": true,
     "category": "Dealer",
@@ -189,72 +252,9 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-022",
-    "name": "Exquisitetimepieces",
-    "url": "https://www.exquisitetimepieces.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-023",
-    "name": "Falkwatches",
-    "url": "https://falkwatches.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-024",
-    "name": "Firekids",
-    "url": "https://firekids.jp/products/list?category_id=8",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-025",
-    "name": "Grandcaliber",
-    "url": "https://grandcaliber.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-026",
-    "name": "Hammatimecollection",
-    "url": "https://www.hammatimecollection.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-027",
-    "name": "Hodinkee",
-    "url": "https://www.hodinkee.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-028",
-    "name": "Horologyxchange",
-    "url": "https://horologyxchange.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
     "id": "site-029",
-    "name": "Housekihiroba",
-    "url": "https://housekihiroba.jp/shop",
+    "name": "European Watch Company",
+    "url": "https://www.europeanwatch.com/brand/rolex",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
@@ -262,26 +262,26 @@
   },
   {
     "id": "site-030",
-    "name": "Huntingtoncompany",
-    "url": "https://huntingtoncompany.com",
+    "name": "EveryWatch",
+    "url": "https://everywatch.com",
+    "enabled": true,
+    "category": "Marketplace",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-031",
+    "name": "Exquisite Timepieces",
+    "url": "https://www.exquisitetimepieces.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
     "custom_search_url": ""
   },
   {
-    "id": "site-031",
-    "name": "Jackroad",
-    "url": "https://www.jackroad.co.jp/shop",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
     "id": "site-032",
-    "name": "Jjtimepiececo",
-    "url": "https://jjtimepiececo.com",
+    "name": "Falk Watches",
+    "url": "https://falkwatches.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "shopify",
@@ -289,8 +289,8 @@
   },
   {
     "id": "site-033",
-    "name": "Kame Kichi",
-    "url": "https://www.kame-kichi.com",
+    "name": "Fire Kids Tokyo",
+    "url": "https://firekids.jp/products/list?category_id=8",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
@@ -298,6 +298,123 @@
   },
   {
     "id": "site-034",
+    "name": "Ginza Rasin Tokyo",
+    "url": "https://www.rasin.co.jp/contents/global_shop.html?ct=1781224583471",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-035",
+    "name": "Grailzee",
+    "url": "https://grailzee.com",
+    "enabled": true,
+    "category": "Marketplace",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-036",
+    "name": "Grand Caliber",
+    "url": "https://grandcaliber.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-037",
+    "name": "Gray & Sons",
+    "url": "https://www.grayandsons.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-038",
+    "name": "Hamma Time Collection",
+    "url": "https://www.hammatimecollection.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-039",
+    "name": "Hodinkee Shop",
+    "url": "https://www.hodinkee.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-040",
+    "name": "Horology Exchange",
+    "url": "https://horologyxchange.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-041",
+    "name": "Housekihiroba Shibuya",
+    "url": "https://housekihiroba.jp/shop",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-042",
+    "name": "Huntington Company",
+    "url": "https://huntingtoncompany.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-043",
+    "name": "Jackroad Tokyo",
+    "url": "https://www.jackroad.co.jp/shop",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-044",
+    "name": "JJ Timepiece Co",
+    "url": "https://jjtimepiececo.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-045",
+    "name": "Kamekichi Tokyo",
+    "url": "https://www.kame-kichi.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-046",
+    "name": "The Keystone",
+    "url": "https://thekeystone.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-047",
     "name": "Lenkersdorfer",
     "url": "https://www.lenkersdorfer.com",
     "enabled": true,
@@ -306,8 +423,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-035",
-    "name": "Liljenquistbeckstead",
+    "id": "site-048",
+    "name": "Liljenquist & Beckstead",
     "url": "https://www.liljenquistbeckstead.com",
     "enabled": true,
     "category": "Dealer",
@@ -315,8 +432,35 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-036",
-    "name": "Lvmwtimepieces",
+    "id": "site-049",
+    "name": "Loupe This",
+    "url": "https://loupethis.com",
+    "enabled": true,
+    "category": "Marketplace",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-050",
+    "name": "Luxury Bazaar",
+    "url": "https://www.luxurybazaar.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-051",
+    "name": "The Luxury Watch Company",
+    "url": "https://theluxurywatchcompany.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-052",
+    "name": "LVMW Timepieces",
     "url": "https://lvmwtimepieces.com",
     "enabled": true,
     "category": "Dealer",
@@ -324,8 +468,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-037",
-    "name": "Matthewbaininc",
+    "id": "site-053",
+    "name": "Manfredi Jewels",
+    "url": "https://www.manfredijewels.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-054",
+    "name": "Matthew Bain Inc",
     "url": "https://www.matthewbaininc.com",
     "enabled": true,
     "category": "Dealer",
@@ -333,8 +486,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-038",
-    "name": "Mentawatches",
+    "id": "site-055",
+    "name": "Menta Watches",
     "url": "https://mentawatches.com",
     "enabled": true,
     "category": "Dealer",
@@ -342,8 +495,26 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-039",
-    "name": "Mttimepieces",
+    "id": "site-056",
+    "name": "Moda Watch Club",
+    "url": "https://www.modacommunities.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-057",
+    "name": "Monaco Legend Auctions",
+    "url": "https://www.monacolegendauctions.com",
+    "enabled": true,
+    "category": "Auction",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-058",
+    "name": "MT Timepieces",
     "url": "https://mttimepieces.net",
     "enabled": true,
     "category": "Dealer",
@@ -351,8 +522,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-040",
-    "name": "Mywatchllc",
+    "id": "site-059",
+    "name": "MyWatch LLC",
     "url": "https://mywatchllc.com",
     "enabled": true,
     "category": "Dealer",
@@ -360,8 +531,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-041",
-    "name": "Nywatchmarket",
+    "id": "site-060",
+    "name": "Nashville Watch",
+    "url": "https://nashvillewatch.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-061",
+    "name": "NY Watch Market",
     "url": "https://nywatchmarket.com",
     "enabled": true,
     "category": "Dealer",
@@ -369,8 +549,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-042",
-    "name": "Ocwatchguy",
+    "id": "site-062",
+    "name": "OC Watch Guy",
     "url": "https://www.ocwatchguy.com",
     "enabled": true,
     "category": "Dealer",
@@ -378,8 +558,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-043",
-    "name": "Pduggan",
+    "id": "site-063",
+    "name": "P. Duggan Co",
     "url": "https://pduggan.com",
     "enabled": true,
     "category": "Dealer",
@@ -387,17 +567,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-044",
-    "name": "Perpetual",
-    "url": "https://perpetual.phillips.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-045",
-    "name": "Perpetualtt",
+    "id": "site-064",
+    "name": "Perpetual Time & Trust",
     "url": "https://www.perpetualtt.com",
     "enabled": true,
     "category": "Dealer",
@@ -405,7 +576,7 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-046",
+    "id": "site-065",
     "name": "Phigora",
     "url": "https://www.phigora.com",
     "enabled": true,
@@ -414,17 +585,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-047",
-    "name": "Rasin",
-    "url": "https://www.rasin.co.jp/contents/global_shop.html?ct=1781224583471",
+    "id": "site-066",
+    "name": "Phillips Perpetual",
+    "url": "https://perpetual.phillips.com",
     "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
+    "category": "Auction",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
-    "id": "site-048",
-    "name": "Reddit (Watchexchange)",
+    "id": "site-067",
+    "name": "Reddit (r/Watchexchange)",
     "url": "https://www.reddit.com/r/Watchexchange",
     "enabled": true,
     "category": "Forum",
@@ -432,8 +603,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-049",
-    "name": "Rolexforums",
+    "id": "site-068",
+    "name": "Rolex Forums",
     "url": "https://www.rolexforums.com",
     "enabled": true,
     "category": "Forum",
@@ -441,17 +612,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-050",
-    "name": "Shop",
-    "url": "https://shop.getbezel.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-051",
-    "name": "Solanawatches",
+    "id": "site-069",
+    "name": "Solana Watches",
     "url": "https://www.solanawatches.com",
     "enabled": true,
     "category": "Dealer",
@@ -459,71 +621,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-052",
-    "name": "Swisswatchexpo",
-    "url": "https://www.swisswatchexpo.com",
+    "id": "site-070",
+    "name": "Sotheby's Watches",
+    "url": "https://www.sothebys.com/en/departments/watches",
     "enabled": true,
-    "category": "Dealer",
+    "category": "Auction",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-053",
-    "name": "Sylvans",
-    "url": "https://sylvans.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-054",
-    "name": "Takuyawatches",
-    "url": "https://www.takuyawatches.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-055",
-    "name": "Teddybaldassarre",
-    "url": "https://teddybaldassarre.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-056",
-    "name": "The1916Company",
-    "url": "https://www.the1916company.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-057",
-    "name": "Thekeystone",
-    "url": "https://thekeystone.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-058",
-    "name": "Theluxurywatchcompany",
-    "url": "https://theluxurywatchcompany.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-059",
-    "name": "Thestellariscollection",
+    "id": "site-071",
+    "name": "The Stellaris Collection",
     "url": "https://www.thestellariscollection.com",
     "enabled": true,
     "category": "Dealer",
@@ -531,8 +639,53 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-060",
-    "name": "Timezone",
+    "id": "site-072",
+    "name": "Subdial",
+    "url": "https://subdial.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-073",
+    "name": "SwissWatchExpo",
+    "url": "https://www.swisswatchexpo.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-074",
+    "name": "Sylvan's Jewelers",
+    "url": "https://sylvans.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-075",
+    "name": "Takuya Watches",
+    "url": "https://www.takuyawatches.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-076",
+    "name": "Teddy Baldassarre",
+    "url": "https://teddybaldassarre.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-077",
+    "name": "TimeZone",
     "url": "https://www.timezone.com",
     "enabled": true,
     "category": "Forum",
@@ -540,8 +693,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-061",
-    "name": "Tinyjewelbox",
+    "id": "site-078",
+    "name": "Tiny Jewel Box",
     "url": "https://www.tinyjewelbox.com",
     "enabled": true,
     "category": "Dealer",
@@ -549,8 +702,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-062",
-    "name": "Topperjewelers",
+    "id": "site-079",
+    "name": "Topper Jewelers",
     "url": "https://topperjewelers.com",
     "enabled": true,
     "category": "Dealer",
@@ -558,8 +711,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-063",
-    "name": "Triangleluxeco",
+    "id": "site-080",
+    "name": "Triangle Luxe Co",
     "url": "https://www.triangleluxeco.com",
     "enabled": true,
     "category": "Dealer",
@@ -567,16 +720,7 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-064",
-    "name": "Usa",
-    "url": "https://usa.watchpro.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-065",
+    "id": "site-081",
     "name": "Vookum",
     "url": "https://vookum.com/collections/all",
     "enabled": true,
@@ -585,17 +729,53 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-066",
-    "name": "Watchcharts",
-    "url": "https://watchcharts.com",
+    "id": "site-082",
+    "name": "The Watch Club London",
+    "url": "https://www.watchclub.com",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-067",
-    "name": "Watchesinl",
+    "id": "site-083",
+    "name": "The Watch Info",
+    "url": "https://thewatchinfo.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-084",
+    "name": "The Watch Pages",
+    "url": "https://www.thewatchpages.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-085",
+    "name": "Watch You Want ATL",
+    "url": "https://www.wywatl.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-086",
+    "name": "WatchCharts",
+    "url": "https://watchcharts.com",
+    "enabled": true,
+    "category": "Marketplace",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-087",
+    "name": "Watches in NL",
     "url": "https://watchesinl.com",
     "enabled": true,
     "category": "Dealer",
@@ -603,8 +783,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-068",
-    "name": "Watchesofcharlotte",
+    "id": "site-088",
+    "name": "Watches of Charlotte",
     "url": "https://www.watchesofcharlotte.com",
     "enabled": true,
     "category": "Dealer",
@@ -612,8 +792,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-069",
-    "name": "Watchfinder",
+    "id": "site-089",
+    "name": "Watches of Switzerland",
+    "url": "https://www.watchesofswitzerland.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "shopify",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-090",
+    "name": "Watchfinder & Co.",
     "url": "https://www.watchfinder.com",
     "enabled": true,
     "category": "Dealer",
@@ -621,8 +810,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-070",
-    "name": "Watchguys",
+    "id": "site-091",
+    "name": "WatchGuys",
     "url": "https://www.watchguys.com",
     "enabled": true,
     "category": "Dealer",
@@ -630,8 +819,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-071",
-    "name": "Watchnian",
+    "id": "site-092",
+    "name": "Watchnian Tokyo",
     "url": "https://watchnian.com/shop/default.aspx",
     "enabled": true,
     "category": "Dealer",
@@ -639,26 +828,35 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-072",
-    "name": "Watchpatrol",
+    "id": "site-093",
+    "name": "WatchPatrol",
     "url": "https://www.watchpatrol.net",
     "enabled": true,
-    "category": "Forum",
+    "category": "Marketplace",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-073",
-    "name": "Watchrecon",
+    "id": "site-094",
+    "name": "WatchPro USA",
+    "url": "https://usa.watchpro.com",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-095",
+    "name": "WatchRecon",
     "url": "https://www.watchrecon.com",
     "enabled": true,
-    "category": "Forum",
+    "category": "Marketplace",
     "platform": "auto",
     "custom_search_url": ""
   },
   {
-    "id": "site-074",
-    "name": "Watchuseek",
+    "id": "site-096",
+    "name": "WatchUSeek",
     "url": "https://www.watchuseek.com/forums",
     "enabled": true,
     "category": "Forum",
@@ -666,8 +864,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-075",
-    "name": "Windvintage",
+    "id": "site-097",
+    "name": "Wind Vintage",
     "url": "https://www.windvintage.com",
     "enabled": true,
     "category": "Dealer",
@@ -675,8 +873,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-076",
-    "name": "Wolvyn",
+    "id": "site-098",
+    "name": "Wolvyn Watches",
     "url": "https://wolvyn.com",
     "enabled": true,
     "category": "Dealer",
@@ -684,8 +882,17 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-077",
-    "name": "Worthytime",
+    "id": "site-099",
+    "name": "World of Time Meertz",
+    "url": "https://www.worldoftime.de",
+    "enabled": true,
+    "category": "Dealer",
+    "platform": "auto",
+    "custom_search_url": ""
+  },
+  {
+    "id": "site-100",
+    "name": "Worthy Time",
     "url": "https://worthytime.com",
     "enabled": true,
     "category": "Dealer",
@@ -693,8 +900,8 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-078",
-    "name": "Wristaficionado",
+    "id": "site-101",
+    "name": "Wrist Aficionado",
     "url": "https://wristaficionado.com",
     "enabled": true,
     "category": "Dealer",
@@ -702,21 +909,12 @@
     "custom_search_url": ""
   },
   {
-    "id": "site-079",
+    "id": "site-102",
     "name": "Wristcheck",
     "url": "https://wristcheck.com/us",
     "enabled": true,
     "category": "Dealer",
     "platform": "auto",
-    "custom_search_url": ""
-  },
-  {
-    "id": "site-080",
-    "name": "Wywatl",
-    "url": "https://www.wywatl.com",
-    "enabled": true,
-    "category": "Dealer",
-    "platform": "shopify",
     "custom_search_url": ""
   }
 ]
