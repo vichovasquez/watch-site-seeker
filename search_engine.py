@@ -26,7 +26,6 @@ KNOWN_BRANDS = {
     "journe", "girard", "perregaux", "blancpain", "breguet", "glashutte"
 }
 
-# 60-second in-memory response cache to prevent 429 rate limiting
 _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
 
@@ -38,11 +37,7 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 def extract_reference_tokens(query: str) -> List[str]:
-    """
-    Extracts non-brand reference and model tokens, including root numbers.
-    e.g. 'Cartier 78086' -> ['78086']
-    e.g. '4200H/222A-B934' -> ['4200h', '4200', '222a', '222', 'b934']
-    """
+    """Extracts non-brand reference / model tokens."""
     tokens = re.split(r'[/\\_\- ]+', query.strip())
     ref_tokens = []
     for t in tokens:
@@ -52,7 +47,6 @@ def extract_reference_tokens(query: str) -> List[str]:
         if len(t_clean) >= 3:
             if t_clean not in ref_tokens:
                 ref_tokens.append(t_clean)
-            # Extract root numeric parts (e.g. '222' from '222a', '4200' from '4200h')
             num_match = re.search(r'\d{3,}', t_clean)
             if num_match:
                 root_num = num_match.group(0)
@@ -61,14 +55,11 @@ def extract_reference_tokens(query: str) -> List[str]:
     return ref_tokens
 
 def normalize_watch_query(query: str) -> List[str]:
-    """
-    Generates intelligent query variations.
-    Never falls back to generic brand names (e.g. 'Cartier 78086' -> ['Cartier 78086', '78086']).
-    """
+    """Generates intelligent query variations."""
     q = query.strip()
     variations = []
 
-    # 1. Cleaned version with spaces instead of slashes/hyphens
+    # 1. Cleaned version with spaces
     cleaned_spaces = re.sub(r'[/\\_\-]+', ' ', q).strip()
     if cleaned_spaces:
         variations.append(cleaned_spaces)
@@ -93,7 +84,7 @@ def normalize_watch_query(query: str) -> List[str]:
     if q not in variations:
         variations.append(q)
 
-    # Filter out generic single brand names from variations
+    # Filter out generic single brand names
     filtered = []
     for v in variations:
         if v.lower().strip() in KNOWN_BRANDS:
@@ -104,11 +95,14 @@ def normalize_watch_query(query: str) -> List[str]:
 
 def calculate_match_score(query: str, title: str, description: str = "", url: str = "") -> float:
     q = query.lower().strip()
-    full_text = f"{title} {description} {url}".lower()
+    # Strip tracking query parameters from URL so tracking queries aren't falsely matched
+    clean_url_path = url.split("?")[0].lower() if url else ""
+    full_text = f"{title} {description} {clean_url_path}".lower()
+    
     if not q or not full_text:
         return 0.0
 
-    # 1. Required Reference Verification:
+    # 1. Required Reference Verification
     ref_tokens = extract_reference_tokens(query)
     if ref_tokens:
         has_ref_match = False
@@ -124,29 +118,21 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
                 has_ref_match = True
                 break
         if not has_ref_match:
-            # Reject items missing the reference number
             return 0.0
 
-    # 2. Exact full query match
+    # Exact full query match
     if q in full_text:
         return 1.0
 
-    # 3. Cleaned query (without punctuation) match
+    # Cleaned query match
     cleaned_q = re.sub(r'[/\\_\-]+', ' ', q).strip()
     if cleaned_q and cleaned_q in full_text:
         return 0.98
 
-    # 4. Variation match
-    for v in normalize_watch_query(query):
-        v_low = v.lower()
-        if len(v_low) >= 3 and v_low in full_text:
-            return 0.92
-
-    # 5. Token match
-    tokens = [t.lower() for t in re.split(r'[/\\_\- ]+', q) if t]
-    matched_tokens = [t for t in tokens if t in full_text]
-    if len(matched_tokens) == len(tokens) and len(tokens) > 0:
-        return 0.88
+    # Reference token match
+    for rt in ref_tokens:
+        if rt in full_text:
+            return 0.95
 
     return 0.0
 
@@ -254,17 +240,22 @@ def search_shopify_sync(base_url: str, query: str, original_query: str = "", tim
             data = json.loads(resp["text"])
             raw_prods = data.get("resources", {}).get("results", {}).get("products", [])
             products = []
+            seen_handles = set()
             for p in raw_prods:
                 title = p.get("title", "")
+                handle = p.get("handle", "")
+                if handle in seen_handles:
+                    continue
                 url_suffix = p.get("url", "")
                 product_url = urllib.parse.urljoin(base_url, url_suffix) if url_suffix else base_url
                 price_val = p.get("price")
-                price_str = f"${float(price_val):,.2f}" if price_val else "Inquire"
+                price_str = f"${float(price_val):,.2f}" if price_val and float(price_val) > 0 else "Inquire"
                 img = p.get("image", "") or p.get("featured_image", {}).get("url", "")
                 if img and img.startswith("//"):
                     img = "https:" + img
                 score = calculate_match_score(target_q, title, p.get("body", ""), product_url)
                 if score >= 0.70:
+                    seen_handles.add(handle)
                     products.append({
                         "title": title,
                         "price": price_str,

@@ -190,11 +190,11 @@
   },
   {
     "id": "site-022",
-    "name": "Huntingtoncompany",
+    "name": "Huntington Company",
     "url": "https://huntingtoncompany.com",
     "enabled": true,
     "category": "Dealer",
-    "platform": "auto",
+    "platform": "shopify",
     "custom_search_url": ""
   },
   {
