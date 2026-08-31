@@ -1228,6 +1228,49 @@
       }
     }
 
+    function populateFilterDropdowns() {
+      // 1. Populate Store Filter with matching stores
+      const storeCounts = {};
+      currentResults.forEach(p => {
+        const store = p.site_name || 'Dealer';
+        storeCounts[store] = (storeCounts[store] || 0) + 1;
+      });
+
+      const currentStoreVal = filterStoreSelect ? filterStoreSelect.value : 'all';
+      if (filterStoreSelect) {
+        filterStoreSelect.innerHTML = '<option value="all">All Websites</option>';
+        Object.keys(storeCounts).sort().forEach(store => {
+          const opt = document.createElement('option');
+          opt.value = store;
+          opt.textContent = `${store} (${storeCounts[store]})`;
+          filterStoreSelect.appendChild(opt);
+        });
+        filterStoreSelect.value = storeCounts[currentStoreVal] ? currentStoreVal : 'all';
+      }
+
+      // 2. Populate Reference Filter with matching refs (if batch search)
+      const refCounts = {};
+      currentResults.forEach(p => {
+        if (p.matched_reference) {
+          refCounts[p.matched_reference] = (refCounts[p.matched_reference] || 0) + 1;
+        }
+      });
+
+      if (filterRefSelect) {
+        const currentRefVal = filterRefSelect.value;
+        filterRefSelect.innerHTML = '<option value="all">All References</option>';
+        if (Object.keys(refCounts).length > 0) {
+          Object.keys(refCounts).sort().forEach(ref => {
+            const opt = document.createElement('option');
+            opt.value = ref;
+            opt.textContent = `${ref} (${refCounts[ref]})`;
+            filterRefSelect.appendChild(opt);
+          });
+          filterRefSelect.value = refCounts[currentRefVal] ? currentRefVal : 'all';
+        }
+      }
+    }
+
     function renderResults() {
       resultsGrid.innerHTML = '';
       const filterRef = filterRefSelect.value;
