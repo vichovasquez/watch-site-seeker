@@ -1034,6 +1034,8 @@
       resultsGrid.innerHTML = '';
       currentResults = [];
       totalMatchesBadge.textContent = '0';
+      if (filterRefSelect) filterRefSelect.value = 'all';
+      if (filterStoreSelect) filterStoreSelect.value = 'all';
 
       const enabledSites = currentSites.filter(s => s.enabled);
       searchStatusText.textContent = `Searching ${enabledSites.length} websites in parallel for "${query}"...`;
@@ -1091,8 +1093,8 @@
         resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${data.total_sites_searched || enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
         searchStatusText.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check-circle"></i> Search Complete!</span> Found ${currentResults.length} matching watch listings.`;
 
-        renderResults();
         populateFilterDropdowns();
+        renderResults();
 
         if (currentResults.length === 0) {
           noMatchesState.classList.remove('hidden');
@@ -1140,6 +1142,8 @@
       resultsGrid.innerHTML = '';
       currentResults = [];
       totalMatchesBadge.textContent = '0';
+      if (filterRefSelect) filterRefSelect.value = 'all';
+      if (filterStoreSelect) filterStoreSelect.value = 'all';
 
       const enabledSites = currentSites.filter(s => s.enabled);
       const totalRefs = selectedList.length;

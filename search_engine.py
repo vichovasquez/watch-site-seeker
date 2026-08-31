@@ -508,6 +508,10 @@ def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, 
         formatted_url = custom_search_url.replace("{q}", urllib.parse.quote(query)).replace("{query}", urllib.parse.quote(query))
         prods = scrape_html_search_sync(base_url, formatted_url, query, timeout=timeout)
         if prods:
+            for p in prods:
+                p["site_id"] = site_id
+                p["site_name"] = site_name
+                p["site_url"] = base_url
             result_payload["products"] = prods
             result_payload["matches_count"] = len(prods)
             _SEARCH_CACHE[cache_key] = result_payload
