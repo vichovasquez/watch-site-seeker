@@ -443,21 +443,31 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     return 0.0
 
 def fetch_url_sync(url: str, timeout: float = 6.0, retries: int = 2) -> Dict[str, Any]:
-    """Synchronously fetches a URL with retries, backoff, and modern browser headers."""
+    """Synchronously fetches a URL with retries, adaptive 429 backoff, and modern browser headers."""
     last_err = None
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
+            headers = dict(DEFAULT_HEADERS)
+            # Add site-specific referer
+            parsed = urllib.parse.urlparse(url)
+            headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
+            if "suggest.json" in url or "json" in url:
+                headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
+                headers["X-Requested-With"] = "XMLHttpRequest"
+            
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 status = resp.status
                 content = resp.read()
                 charset = resp.headers.get_content_charset() or "utf-8"
                 text = content.decode(charset, errors="ignore")
-                return {"status": status, "text": text, "url": resp.url}
+                c_type = resp.headers.get("Content-Type", "").lower()
+                return {"status": status, "text": text, "url": resp.url, "content_type": c_type}
         except urllib.error.HTTPError as e:
             last_err = e
             if e.code == 429:
-                time.sleep(0.4 * (attempt + 1))
+                # Exponential backoff on rate limit
+                time.sleep(0.6 * (attempt + 1))
             elif e.code in (403, 404, 500):
                 break
         except Exception as e:
