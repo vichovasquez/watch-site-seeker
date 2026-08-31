@@ -357,6 +357,29 @@ def extract_reference_tokens(query: str) -> List[str]:
             result.append(t)
     return result
 
+def get_best_dealer_query(query: str) -> str:
+    q_clean = query.strip()
+    tokens = extract_reference_tokens(q_clean)
+    if not tokens:
+        return q_clean
+    
+    # Priority 1: Alphanumeric model code without delimiters (e.g. 126518ln, 5231g, 4200h)
+    for t in tokens:
+        if "/" not in t and "-" not in t and "." not in t and " " not in t and not t.isdigit() and len(t) >= 4:
+            return t.upper()
+            
+    # Priority 2: Dotted reference (e.g. 405.035)
+    for t in tokens:
+        if "." in t:
+            return t.upper()
+            
+    # Priority 3: Pure digit reference >= 4 chars (e.g. 78086, 5711)
+    for t in tokens:
+        if "/" not in t and "-" not in t and "." not in t and " " not in t and len(t) >= 4:
+            return t.upper()
+            
+    return tokens[0].upper()
+
 def extract_query_brands(query: str) -> List[str]:
     q_low = query.lower()
     found_brands = []
@@ -716,9 +739,8 @@ async def async_search_site(site: Dict, query: str, timeout: float = 4.5) -> Dic
 
     t0 = time.time()
     
-    # Best single dealer query term: root reference number if available (e.g. '5231G' or '405.035')
-    ref_tokens = extract_reference_tokens(query)
-    dealer_q = ref_tokens[0] if ref_tokens else query.strip()
+    # Best single dealer query term: root reference number without sub-variant suffixes (e.g. '126518LN' from '126518LN-0004')
+    dealer_q = get_best_dealer_query(query)
 
     # 1. Custom Search URL Override
     if custom_search_url:
