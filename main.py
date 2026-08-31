@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, HTTPException, Body, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from typing import List, Dict, Optional, Any
 import uvicorn
 
@@ -28,6 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(AuthMiddleware)
 
 # Mount static files
@@ -35,7 +37,7 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-searcher = MultiSiteSearcher(timeout=8.0)
+searcher = MultiSiteSearcher(timeout=4.5)
 
 # ================= AUTHENTICATION ROUTES =================
 

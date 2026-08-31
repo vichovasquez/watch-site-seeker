@@ -4,6 +4,7 @@ import json
 import re
 import time
 import asyncio
+import httpx
 from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +24,29 @@ DEFAULT_HEADERS = {
     "Sec-Fetch-User": "?1",
     "Upgrade-Insecure-Requests": "1",
 }
+
+# HTTPX Connection-Pooled Async Client Singleton
+_ASYNC_CLIENT: Optional[httpx.AsyncClient] = None
+
+def get_async_client() -> httpx.AsyncClient:
+    global _ASYNC_CLIENT
+    if _ASYNC_CLIENT is None or _ASYNC_CLIENT.is_closed:
+        limits = httpx.Limits(max_keepalive_connections=150, max_connections=250, keepalive_expiry=30.0)
+        timeout = httpx.Timeout(connect=3.0, read=4.5, write=4.5, pool=5.0)
+        _ASYNC_CLIENT = httpx.AsyncClient(
+            limits=limits,
+            timeout=timeout,
+            headers=dict(DEFAULT_HEADERS),
+            follow_redirects=True,
+            verify=False
+        )
+    return _ASYNC_CLIENT
+
+async def close_async_client():
+    global _ASYNC_CLIENT
+    if _ASYNC_CLIENT and not _ASYNC_CLIENT.is_closed:
+        await _ASYNC_CLIENT.aclose()
+        _ASYNC_CLIENT = None
 
 KNOWN_BRANDS: Dict[str, List[str]] = {
     "cartier": ["cartier"],
@@ -72,6 +96,7 @@ KNOWN_REF_BRANDS = {
 
 _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
+DEALER_LATENCY_STATS: Dict[str, float] = {}
 
 def clean_text(text: str) -> str:
     if not text:
@@ -108,17 +133,22 @@ TRANSLATION_MAP = [
     (r'エクスプローラー', 'Explorer'),
     (r'デイデイト', 'Day-Date'),
     (r'デイトジャスト', 'Datejust'),
-    (r'スピードマスター', 'Speedmaster'),
-    (r'シーマスター', 'Seamaster'),
+    (r'ヨットマスター', 'Yacht-Master'),
+    (r'ミルガウス', 'Milgauss'),
+    (r'シードゥエラー', 'Sea-Dweller'),
+    (r'エアキング', 'Air-King'),
+    (r'スカイドゥエラー', 'Sky-Dweller'),
     (r'ノーチラス', 'Nautilus'),
     (r'アクアノート', 'Aquanaut'),
     (r'カラトラバ', 'Calatrava'),
     (r'ワールドタイム', 'World Time'),
     (r'ロイヤルオーク', 'Royal Oak'),
+    (r'スピードマスター', 'Speedmaster'),
+    (r'シーマスター', 'Seamaster'),
     (r'タンク', 'Tank'),
     (r'サントス', 'Santos'),
+    (r'レベルソ', 'Reverso'),
     
-    # Japanese Watch Terms
     # Extended Japanese Watch Models & Terms
     (r'チェリーニ', 'Cellini'),
     (r'オイスター\s*パーペチュアル\s*デイト', 'Oyster Perpetual Date'),
@@ -147,67 +177,48 @@ TRANSLATION_MAP = [
     (r'修理', 'Service / Repair'),
     (r'明細', 'Receipt / Invoice'),
     (r'ケース', 'Case'),
-    (r'バイセロイケース', 'Viceroy Case'),
-    (r'クロノメーター', 'Chronometer'),
-    (r'クロノグラフ', 'Chronograph'),
-    (r'手巻(?:き)?', 'Manual Wind'),
-    (r'自動巻(?:き)?', 'Automatic'),
-    (r'クォーツ|クオーツ', 'Quartz'),
+
+    # Japanese Watch Terms
+    (r'未使用品|新品', 'Unworn / Brand New'),
+    (r'中古(?:品)?', 'Pre-Owned'),
+    (r'極美品|美品', 'Excellent Condition'),
+    (r'良品', 'Good Condition'),
+    (r'箱\s*保(?:証書)?|箱\s*保証書付|箱・保証書付き', 'Box & Papers'),
+    (r'保証書付|保証書あり|保付', 'with Papers / Warranty'),
+    (r'箱付|箱あり', 'with Box'),
+    (r'自動巻き|自動巻', 'Automatic'),
+    (r'手巻き|手巻', 'Manual Wind'),
+    (r'クォーツ', 'Quartz'),
     (r'メンズ', "Men's"),
     (r'レディース', "Women's"),
     (r'ユニセックス', 'Unisex'),
-    (r'箱[・\s]*保(?:証書)?あり|箱[・\s]*保(?:証書)?|箱あり|箱・保証書', 'Box & Papers'),
-    (r'保証書あり|保証書', 'Papers / Warranty'),
-    (r'箱', 'Box'),
-    (r'未使用品|新品', 'Brand New / Unworn'),
-    (r'中古品|中古', 'Pre-Owned'),
-    (r'極美品|美品', 'Excellent Condition'),
-    (r'18金無垢|18金', '18K Gold'),
-    (r'14金無垢|14金', '14K Gold'),
-    (r'金無垢', 'Solid Gold'),
-    (r'ピンクゴールド', 'Rose Gold'),
-    (r'ローズゴールド', 'Rose Gold'),
-    (r'イエローゴールド', 'Yellow Gold'),
-    (r'ホワイトゴールド', 'White Gold'),
-    (r'プラチナ', 'Platinum'),
-    (r'ステンレス(?:スチール)?', 'Stainless Steel'),
-    (r'ブラック文字盤|黒文字盤|黒文字ばん', 'Black Dial'),
-    (r'ホワイト文字盤|白文字盤', 'White Dial'),
-    (r'ブルー文字盤|青文字盤', 'Blue Dial'),
-    (r'シルバー文字盤|銀文字盤', 'Silver Dial'),
+    (r'黒文字盤|ブラック文字盤', 'Black Dial'),
+    (r'白文字盤|ホワイト文字盤', 'White Dial'),
+    (r'青文字盤|ブルー文字盤', 'Blue Dial'),
+    (r'銀文字盤|シルバー文字盤', 'Silver Dial'),
     (r'緑文字盤|グリーン文字盤', 'Green Dial'),
     (r'文字盤', 'Dial'),
-    (r'年製', ' Year'),
-    (r'税込', 'Incl. Tax'),
-    (r'税抜', 'Excl. Tax'),
-    (r'送料無料', 'Free Shipping'),
-    
+    (r'ステンレススチール|ステンレス|SS', 'Stainless Steel'),
+    (r'イエローゴールド|YG', 'Yellow Gold'),
+    (r'ホワイトゴールド|WG', 'White Gold'),
+    (r'ピンクゴールド|ローズゴールド|PG|RG', 'Rose Gold'),
+    (r'プラチナ|PT', 'Platinum'),
+    (r'無垢', 'Solid Gold'),
+    (r'年式|年製|年', ' Year '),
+
     # German Terms
-    (r'\bHerrenuhr\b', "Men's Watch"),
-    (r'\bDamenuhr\b', "Women's Watch"),
-    (r'\bArmbanduhr\b', 'Wristwatch'),
-    (r'\bAutomatik\b', 'Automatic'),
-    (r'\bHandaufzug\b', 'Manual Wind'),
-    (r'\bStahl\b', 'Steel'),
-    (r'\bEdelstahl\b', 'Stainless Steel'),
-    (r'\bGelbgold\b', 'Yellow Gold'),
-    (r'\bWeissgold\b|\bWeißgold\b', 'White Gold'),
-    (r'\bRoségold\b|\bRotgold\b', 'Rose Gold'),
-    (r'\bPlatin\b', 'Platinum'),
-    (r'\bLederband\b', 'Leather Strap'),
-    (r'\bStahlband\b', 'Steel Bracelet'),
-    (r'\bBox und Papiere\b', 'Box & Papers'),
-    (r'\bmit Box\b', 'with Box'),
-    (r'\bmit Papieren\b', 'with Papers'),
-    (r'\bSehr gut\b', 'Very Good Condition'),
-    (r'\bUngetragen\b', 'Unworn / Mint'),
-    (r'\bZifferblatt\b', 'Dial'),
-    (r'\bSchwarz\b', 'Black'),
-    (r'\bWeiss\b|\bWeiß\b', 'White'),
-    (r'\bBlau\b', 'Blue'),
-    (r'\bSilber\b', 'Silver'),
-    (r'\bGrün\b', 'Green'),
-    (r'\bVerkauft\b', 'Sold')
+    (r'ungetragen', 'Unworn'),
+    (r'sehr gut', 'Very Good'),
+    (r'gut', 'Good'),
+    (r'mit box und papieren', 'Box & Papers'),
+    (r'mit box', 'with Box'),
+    (r'mit papieren', 'with Papers'),
+    (r'weißgold', 'White Gold'),
+    (r'gelbgold', 'Yellow Gold'),
+    (r'roségold', 'Rose Gold'),
+    (r'edelstahl', 'Stainless Steel'),
+    (r'automatik', 'Automatic'),
+    (r'handaufzug', 'Manual Wind'),
 ]
 
 def convert_currency_to_usd(price_str: str) -> str:
@@ -261,112 +272,98 @@ def convert_currency_to_usd(price_str: str) -> str:
     return clean_p
 
 def translate_to_english(text: str) -> str:
-    """Translates foreign titles and watch terminology into clean English."""
+    """Translates common foreign watch terms (Japanese, German) to clean English."""
     if not text:
         return ""
-    t = text
-    for pattern, repl in TRANSLATION_MAP:
-        t = re.sub(pattern, repl, t, flags=re.IGNORECASE)
-    t = re.sub(r'[\r\n\t]+', ' ', t)
-    t = re.sub(r'\s{2,}', ' ', t).strip()
-    return t
-
+    translated = text
+    for pattern, replacement in TRANSLATION_MAP:
+        translated = re.sub(pattern, replacement, translated, flags=re.IGNORECASE)
+    translated = re.sub(r'\s+', ' ', translated).strip()
+    return translated
 
 def extract_reference_tokens(query: str) -> List[str]:
-    """
-    Extracts non-brand reference / model tokens.
-    Handles dots, hyphens, and slashes.
-    Ignores pure dial/variant suffixes (e.g. '001', '0004', '010') as standalone tokens.
-    """
-    tokens = re.split(r'[/\\_\- ]+', query.strip())
-    ref_tokens = []
+    """Extracts watch reference number variations from a user query."""
+    q_clean = query.strip()
+    tokens = []
+    
+    # 1. Matches patterns like 4200H/222A-B934 or 5231G-001 or 126518LN
+    slash_hyphen_match = re.findall(r'[a-zA-Z0-9]+[/-][a-zA-Z0-9/-]+', q_clean)
+    for m in slash_hyphen_match:
+        tokens.append(m.lower())
+        for part in re.split(r'[/-]', m):
+            if len(part) >= 3:
+                tokens.append(part.lower())
+                
+    # 2. Matches dotted references like 405.035
+    dotted_matches = re.findall(r'\b\d{3,4}\.\d{3,4}\b', q_clean)
+    for dm in dotted_matches:
+        tokens.append(dm)
+        tokens.append(dm.replace('.', ' '))
+        tokens.append(dm.replace('.', '-'))
+        tokens.append(dm.replace('.', ''))
+
+    # 3. Matches alphanumeric model codes like 126518LN or 5231G
+    ref_matches = re.findall(r'\b(?:\d{4,6}[A-Za-z]{1,4}|[A-Za-z]{1,3}\d{4,6}[A-Za-z]{0,3}|\d{4,6})\b', q_clean)
+    for rm in ref_matches:
+        if len(rm) >= 3:
+            tokens.append(rm.lower())
+            pure_digits = re.sub(r'[^0-9]', '', rm)
+            if len(pure_digits) >= 4 and pure_digits != rm:
+                tokens.append(pure_digits)
+
+    # De-duplicate preserving order
+    seen = set()
+    result = []
     for t in tokens:
-        t_clean = t.strip().lower()
-        if not t_clean or any(t_clean == b or t_clean in syns for b, syns in KNOWN_BRANDS.items()):
-            continue
-        # Avoid treating pure dial/variant suffixes like '001', '010', '0004' as standalone ref tokens
-        if re.match(r'^0+\d+$', t_clean):
-            continue
-        if len(t_clean) >= 3:
-            if t_clean not in ref_tokens:
-                ref_tokens.append(t_clean)
-            if "." in t_clean:
-                dot_space = t_clean.replace(".", " ")
-                dot_hyphen = t_clean.replace(".", "-")
-                dot_num = t_clean.replace(".", "")
-                if dot_space not in ref_tokens: ref_tokens.append(dot_space)
-                if dot_hyphen not in ref_tokens: ref_tokens.append(dot_hyphen)
-                if dot_num not in ref_tokens: ref_tokens.append(dot_num)
-            else:
-                num_match = re.search(r'\d{3,}', t_clean)
-                if num_match:
-                    root_num = num_match.group(0)
-                    if root_num not in ref_tokens and len(root_num) >= 3:
-                        ref_tokens.append(root_num)
-    return ref_tokens
+        if t not in seen and len(t) >= 3:
+            seen.add(t)
+            result.append(t)
+    return result
 
 def extract_query_brands(query: str) -> List[str]:
+    """Identifies watch brand families mentioned in the query."""
     q_low = query.lower()
-    brands = []
+    found_brands = []
+    
     for brand, synonyms in KNOWN_BRANDS.items():
-        if re.search(r'\b' + re.escape(brand) + r'\b', q_low) or any(re.search(r'\b' + re.escape(s) + r'\b', q_low) for s in synonyms):
-            brands.append(brand)
+        if any(re.search(r'\b' + re.escape(syn) + r'\b', q_low) for syn in synonyms):
+            found_brands.append(brand)
             
-    if not brands:
-        ref_tokens = extract_reference_tokens(query)
-        for rt in ref_tokens:
-            rt_clean = rt.lower().replace(".", "").replace("-", "").replace(" ", "")
-            for ref_prefix, ref_brand in KNOWN_REF_BRANDS.items():
-                if ref_prefix in rt_clean:
-                    if ref_brand not in brands:
-                        brands.append(ref_brand)
-    return brands
+    if not found_brands:
+        for ref_prefix, brand in KNOWN_REF_BRANDS.items():
+            if ref_prefix in q_low:
+                found_brands.append(brand)
+                break
+                
+    return found_brands
 
 def normalize_watch_query(query: str) -> List[str]:
-    """
-    Generates intelligent query variations for network search.
-    """
-    q = query.strip()
-    variations = []
-
-    # 1. Cleaned version with spaces replacing all punctuation
-    cleaned_spaces = re.sub(r'[/\\_\-\.]+', ' ', q).strip()
-    if cleaned_spaces:
-        variations.append(cleaned_spaces)
-
-    # 2. Extract reference-only tokens
-    ref_tokens = extract_reference_tokens(q)
-    for rt in ref_tokens:
-        if rt not in variations:
-            variations.append(rt)
-
-    # 3. Base model before slash, hyphen, or dot
-    if "/" in q:
-        slash_p = q.split("/")[0].strip()
-        if slash_p and slash_p not in variations and len(slash_p) >= 3:
-            variations.append(slash_p)
-    if "-" in q:
-        hyphen_p = q.split("-")[0].strip()
-        if hyphen_p and hyphen_p not in variations and len(hyphen_p) >= 3:
-            variations.append(hyphen_p)
-    if "." in q:
-        dot_p = q.split(".")[0].strip()
-        if dot_p and dot_p not in variations and len(dot_p) >= 3:
-            variations.append(dot_p)
-
-    # 4. Original query
-    if q not in variations:
-        variations.append(q)
-
-    # Filter out generic single brand names from variations
-    filtered = []
+    """Generates ordered search query variations to optimize dealer catalog lookups."""
+    q_clean = clean_text(query)
+    variations = [q_clean]
+    
+    tokens = extract_reference_tokens(q_clean)
+    for tok in tokens:
+        if tok not in variations and tok.lower() != q_clean.lower():
+            variations.append(tok)
+            
+    no_punct = re.sub(r'[/\\_\-\.]+', ' ', q_clean).strip()
+    if no_punct not in variations:
+        variations.append(no_punct)
+        
+    no_space = re.sub(r'[/\\_\-\.\s]+', '', q_clean).strip()
+    if no_space not in variations:
+        variations.append(no_space)
+        
+    seen = set()
+    ordered = []
     for v in variations:
-        v_low = v.lower().strip()
-        if any(v_low == b or v_low in syns for b, syns in KNOWN_BRANDS.items()):
-            continue
-        filtered.append(v)
-
-    return filtered if filtered else [q]
+        v_low = v.lower()
+        if v_low not in seen and len(v) > 1:
+            seen.add(v_low)
+            ordered.append(v)
+            
+    return ordered
 
 def calculate_match_score(query: str, title: str, description: str = "", url: str = "") -> float:
     q = query.lower().strip()
@@ -442,121 +439,53 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
 
     return 0.0
 
-def fetch_url_sync(url: str, timeout: float = 6.0, retries: int = 2) -> Dict[str, Any]:
-    """Synchronously fetches a URL with retries, adaptive 429 backoff, and modern browser headers."""
+
+# --- HIGH-PERFORMANCE ASYNC NETWORKING LAYER ---
+
+async def fetch_url_async(url: str, timeout: float = 4.5, retries: int = 2) -> Dict[str, Any]:
+    """Async URL fetcher using pooled HTTP/2 client with adaptive backoff."""
+    client = get_async_client()
     last_err = None
+    
+    parsed = urllib.parse.urlparse(url)
+    custom_headers = {
+        "Referer": f"{parsed.scheme}://{parsed.netloc}/"
+    }
+    if "suggest.json" in url or "json" in url:
+        custom_headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
+        custom_headers["X-Requested-With"] = "XMLHttpRequest"
+        
     for attempt in range(retries):
         try:
-            headers = dict(DEFAULT_HEADERS)
-            # Add site-specific referer
-            parsed = urllib.parse.urlparse(url)
-            headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
-            if "suggest.json" in url or "json" in url:
-                headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
-                headers["X-Requested-With"] = "XMLHttpRequest"
-            
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                status = resp.status
-                content = resp.read()
-                charset = resp.headers.get_content_charset() or "utf-8"
-                text = content.decode(charset, errors="ignore")
-                c_type = resp.headers.get("Content-Type", "").lower()
-                return {"status": status, "text": text, "url": resp.url, "content_type": c_type}
-        except urllib.error.HTTPError as e:
+            resp = await client.get(url, headers=custom_headers, timeout=timeout)
+            c_type = resp.headers.get("Content-Type", "").lower()
+            return {
+                "status": resp.status_code,
+                "text": resp.text,
+                "url": str(resp.url),
+                "content_type": c_type
+            }
+        except httpx.HTTPStatusError as e:
             last_err = e
-            if e.code == 429:
-                # Exponential backoff on rate limit
-                time.sleep(0.6 * (attempt + 1))
-            elif e.code in (403, 404, 500):
+            if e.response.status_code == 429:
+                await asyncio.sleep(0.5 * (attempt + 1))
+            elif e.response.status_code in (403, 404, 500):
                 break
         except Exception as e:
             last_err = e
-            time.sleep(0.2)
-    return {"status": getattr(last_err, "code", 0), "text": "", "error": str(last_err)}
+            await asyncio.sleep(0.15)
+            
+    return {"status": getattr(last_err, "status_code", 0) if hasattr(last_err, "status_code") else 0, "text": "", "error": str(last_err)}
 
-def sync_search_site(site: Dict, query: str, timeout: float = 8.0) -> Dict[str, Any]:
-    base_url = site["url"].rstrip("/")
-    site_id = site.get("id")
-    site_name = site.get("name", "Store")
-    custom_search_url = site.get("custom_search_url", "")
-    platform = site.get("platform", "auto")
-    
-    cache_key = f"{base_url}::{query.strip().lower()}"
-    now = time.time()
-    if cache_key in _SEARCH_CACHE and _CACHE_EXPIRY.get(cache_key, 0) > now:
-        cached_res = dict(_SEARCH_CACHE[cache_key])
-        cached_res["query"] = query
-        return cached_res
 
-    result_payload = {
-        "site_id": site_id,
-        "site_name": site_name,
-        "site_url": base_url,
-        "category": site.get("category", "Dealer"),
-        "query": query,
-        "status": "success",
-        "matches_count": 0,
-        "products": [],
-        "error": None
-    }
-
-    query_variations = normalize_watch_query(query)
-
-    # 1. Custom Search URL Override
-    if custom_search_url:
-        formatted_url = custom_search_url.replace("{q}", urllib.parse.quote(query)).replace("{query}", urllib.parse.quote(query))
-        prods = scrape_html_search_sync(base_url, formatted_url, query, timeout=timeout)
-        if prods:
-            for p in prods:
-                p["site_id"] = site_id
-                p["site_name"] = site_name
-                p["site_url"] = base_url
-            result_payload["products"] = prods
-            result_payload["matches_count"] = len(prods)
-            _SEARCH_CACHE[cache_key] = result_payload
-            _CACHE_EXPIRY[cache_key] = now + 60.0
-            return result_payload
-
-    # 2. Shopify Search (Suggest API & HTML Search) for all Shopify or Auto sites
-    if platform in ("shopify", "auto"):
-        for q_term in query_variations:
-            prods = search_shopify_sync(base_url, q_term, original_query=query, timeout=timeout)
-            if prods:
-                result_payload["products"] = prods
-                result_payload["matches_count"] = len(prods)
-                _SEARCH_CACHE[cache_key] = result_payload
-                _CACHE_EXPIRY[cache_key] = now + 60.0
-                return result_payload
-
-    # 3. General HTML Search Fallbacks
-    for q_term in query_variations[:2]:
-        encoded_q = urllib.parse.quote(q_term)
-        fallback_paths = [
-            f"{base_url}/search?q={encoded_q}",
-            f"{base_url}/?s={encoded_q}"
-        ]
-        for path in fallback_paths:
-            prods = scrape_html_search_sync(base_url, path, query, timeout=timeout)
-            if prods:
-                result_payload["products"] = prods
-                result_payload["matches_count"] = len(prods)
-                _SEARCH_CACHE[cache_key] = result_payload
-                _CACHE_EXPIRY[cache_key] = now + 60.0
-                return result_payload
-
-    _SEARCH_CACHE[cache_key] = result_payload
-    _CACHE_EXPIRY[cache_key] = now + 60.0
-    return result_payload
-
-def search_shopify_sync(base_url: str, query: str, original_query: str = "", timeout: float = 8.0) -> List[Dict]:
+async def search_shopify_async(base_url: str, query: str, original_query: str = "", timeout: float = 4.5) -> List[Dict]:
     target_q = original_query or query
     clean_param = re.sub(r'[/\\_]+', ' ', query).strip()
     encoded_q = urllib.parse.quote(clean_param)
 
-    # Method 1: Clean suggest.json
+    # Method 1: Async Suggest API
     suggest_url = f"{base_url}/search/suggest.json?q={encoded_q}&resources[type]=product"
-    resp = fetch_url_sync(suggest_url, timeout=timeout)
+    resp = await fetch_url_async(suggest_url, timeout=timeout)
     if resp.get("status") == 200 and "json" in resp.get("content_type", ""):
         try:
             data = json.loads(resp["text"])
@@ -575,12 +504,13 @@ def search_shopify_sync(base_url: str, query: str, original_query: str = "", tim
                 img = p.get("image", "") or p.get("featured_image", {}).get("url", "")
                 if img and img.startswith("//"):
                     img = "https:" + img
-                score = calculate_match_score(target_q, title, p.get("body", ""), product_url)
+                trans_title = translate_to_english(title)
+                score = calculate_match_score(target_q, trans_title, p.get("body", ""), product_url)
                 if score >= 0.70:
                     seen_handles.add(handle)
                     products.append({
-                        "title": title,
-                        "price": price_str,
+                        "title": trans_title,
+                        "price": convert_currency_to_usd(price_str),
                         "url": product_url,
                         "image": img,
                         "vendor": p.get("vendor", ""),
@@ -589,15 +519,20 @@ def search_shopify_sync(base_url: str, query: str, original_query: str = "", tim
                     })
             if products:
                 return products
+            return []
         except Exception:
             pass
 
-    # Method 2: HTML search page
-    html_url = f"{base_url}/search?q={encoded_q}&type=product&options%5Bprefix%5D=last"
-    return scrape_html_search_sync(base_url, html_url, target_q, timeout=timeout)
+    # Method 2: HTML Search fallback
+    if resp.get("status") in (404, 0) or "json" not in resp.get("content_type", ""):
+        html_url = f"{base_url}/search?q={encoded_q}&type=product"
+        return await scrape_html_search_async(base_url, html_url, target_q, timeout=timeout)
+        
+    return []
 
-def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout: float = 6.0) -> List[Dict]:
-    resp = fetch_url_sync(search_url, timeout=timeout)
+
+async def scrape_html_search_async(base_url: str, search_url: str, query: str, timeout: float = 4.5) -> List[Dict]:
+    resp = await fetch_url_async(search_url, timeout=timeout)
     if resp.get("status") != 200 or not resp.get("text"):
         return []
     
@@ -670,7 +605,6 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
         title = re.sub(r'\s+', ' ', title).strip()
         trans_title = translate_to_english(title)
         
-        # Strict Relevance Scoring Gate
         score = calculate_match_score(query, trans_title, text, p_url)
         if score < 0.70:
             continue
@@ -698,13 +632,13 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
                 "score": round(score, 2)
             })
             
-    # Fallback to direct anchor links if no structured cards found
+    # Fallback to direct anchor links
     if not products:
         for a in soup.find_all("a", href=True):
             txt = a.get_text(" ", strip=True)
             if len(txt) > 10:
                 p_url = urllib.parse.urljoin(base_url, a["href"])
-                if any(ext in p_url.lower() for ext in [".html", "/item", "/goods", "/product", "/shop", "/watch"]):
+                if any(ext in p_url.lower() for ext in [".html", "/item", "/goods", "/product", "/shop", "/watch", "/watches"]):
                     trans_txt = translate_to_english(txt)
                     score = calculate_match_score(query, trans_txt, "", p_url)
                     if score >= 0.70:
@@ -721,16 +655,105 @@ def scrape_html_search_sync(base_url: str, search_url: str, query: str, timeout:
                         
     return products[:15]
 
+
+async def async_search_site(site: Dict, query: str, timeout: float = 4.5) -> Dict[str, Any]:
+    """Asynchronously searches a single website with connection reuse and in-memory caching."""
+    base_url = site["url"].rstrip("/")
+    site_id = site.get("id")
+    site_name = site.get("name", "Store")
+    custom_search_url = site.get("custom_search_url", "")
+    platform = site.get("platform", "auto")
+    
+    cache_key = f"{base_url}::{query.strip().lower()}"
+    now = time.time()
+    if cache_key in _SEARCH_CACHE and _CACHE_EXPIRY.get(cache_key, 0) > now:
+        cached_res = dict(_SEARCH_CACHE[cache_key])
+        cached_res["query"] = query
+        return cached_res
+
+    result_payload = {
+        "site_id": site_id,
+        "site_name": site_name,
+        "site_url": base_url,
+        "category": site.get("category", "Dealer"),
+        "query": query,
+        "status": "success",
+        "matches_count": 0,
+        "products": [],
+        "error": None
+    }
+
+    t0 = time.time()
+    
+    # Best single dealer query term: root reference number if available (e.g. '5231G' or '405.035')
+    ref_tokens = extract_reference_tokens(query)
+    dealer_q = ref_tokens[0] if ref_tokens else query.strip()
+
+    # 1. Custom Search URL Override
+    if custom_search_url:
+        formatted_url = custom_search_url.replace("{q}", urllib.parse.quote(dealer_q)).replace("{query}", urllib.parse.quote(dealer_q))
+        prods = await scrape_html_search_async(base_url, formatted_url, query, timeout=timeout)
+        if prods:
+            for p in prods:
+                p["site_id"] = site_id
+                p["site_name"] = site_name
+                p["site_url"] = base_url
+            result_payload["products"] = prods
+            result_payload["matches_count"] = len(prods)
+            _SEARCH_CACHE[cache_key] = result_payload
+            _CACHE_EXPIRY[cache_key] = now + 180.0
+            DEALER_LATENCY_STATS[site_id] = time.time() - t0
+            return result_payload
+
+    # 2. Shopify Search (Suggest API & fallback)
+    if platform in ("shopify", "auto"):
+        prods = await search_shopify_async(base_url, dealer_q, original_query=query, timeout=timeout)
+        if prods:
+            for p in prods:
+                p["site_id"] = site_id
+                p["site_name"] = site_name
+                p["site_url"] = base_url
+            result_payload["products"] = prods
+            result_payload["matches_count"] = len(prods)
+            _SEARCH_CACHE[cache_key] = result_payload
+            _CACHE_EXPIRY[cache_key] = now + 180.0
+            DEALER_LATENCY_STATS[site_id] = time.time() - t0
+            return result_payload
+
+    # 3. General HTML Search Fallback
+    encoded_q = urllib.parse.quote(dealer_q)
+    fallback_paths = [
+        f"{base_url}/search?q={encoded_q}",
+        f"{base_url}/?s={encoded_q}"
+    ]
+    for path in fallback_paths:
+        prods = await scrape_html_search_async(base_url, path, query, timeout=timeout)
+        if prods:
+            for p in prods:
+                p["site_id"] = site_id
+                p["site_name"] = site_name
+                p["site_url"] = base_url
+            result_payload["products"] = prods
+            result_payload["matches_count"] = len(prods)
+            _SEARCH_CACHE[cache_key] = result_payload
+            _CACHE_EXPIRY[cache_key] = now + 180.0
+            DEALER_LATENCY_STATS[site_id] = time.time() - t0
+            return result_payload
+
+    _SEARCH_CACHE[cache_key] = result_payload
+    _CACHE_EXPIRY[cache_key] = now + 180.0
+    DEALER_LATENCY_STATS[site_id] = time.time() - t0
+    return result_payload
+
+
 class MultiSiteSearcher:
-    def __init__(self, timeout: float = 6.0):
+    def __init__(self, timeout: float = 4.5):
         self.timeout = timeout
-        self.executor = SEARCH_EXECUTOR
 
     async def search_site(self, site: Dict, query: str) -> Dict[str, Any]:
-        """Runs search for a single site in a dedicated high-concurrency worker thread."""
-        loop = asyncio.get_running_loop()
+        """Runs search for a single site asynchronously."""
         try:
-            return await loop.run_in_executor(self.executor, sync_search_site, site, query, self.timeout)
+            return await async_search_site(site, query, self.timeout)
         except Exception as e:
             return {
                 "site_id": site.get("id"),
@@ -742,28 +765,23 @@ class MultiSiteSearcher:
                 "error": str(e)
             }
 
-    async def search_all(self, sites: List[Dict], query: str, max_total_wait: float = 8.0) -> List[Dict[str, Any]]:
-        """Searches all enabled sites concurrently with a strict deadline guarantee."""
+    async def search_all(self, sites: List[Dict], query: str, max_total_wait: float = 5.0) -> List[Dict[str, Any]]:
+        """Searches all enabled sites concurrently with HTTP/2 async connection pooling."""
         enabled_sites = [s for s in sites if s.get("enabled", True)]
         if not enabled_sites:
             return []
             
-        loop = asyncio.get_running_loop()
-        futures = [
-            loop.run_in_executor(self.executor, sync_search_site, site, query, self.timeout)
-            for site in enabled_sites
-        ]
+        tasks = [asyncio.create_task(self.search_site(site, query)) for site in enabled_sites]
+        done, pending = await asyncio.wait(tasks, timeout=max_total_wait)
         
-        done, pending = await asyncio.wait(futures, timeout=max_total_wait)
-        for f in pending:
-            f.cancel()
+        for task in pending:
+            task.cancel()
             
         results = []
-        for f in done:
+        for task in done:
             try:
-                res = f.result()
-                if isinstance(res, dict):
-                    results.append(res)
+                res = task.result()
+                results.append(res)
             except Exception:
                 pass
                 

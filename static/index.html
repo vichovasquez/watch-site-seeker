@@ -1059,11 +1059,8 @@
       const siteMatchesMap = {};
 
       try {
-        const res = await fetch('/api/search', {
-          method: 'POST',
+        const res = await fetch(`/api/search/stream?query=${encodeURIComponent(query)}`, {
           credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
           signal: searchAbortController.signal
         });
 
@@ -1071,33 +1068,64 @@
           throw new Error(`Server returned HTTP ${res.status}`);
         }
 
-        const data = await res.json();
-        clearInterval(timerInterval);
-        const finalElapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
-        searchTimer.textContent = `${finalElapsed}s`;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        const prods = data.all_products || [];
-        prods.forEach(p => { p.matched_reference = query; });
-        currentResults = prods;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
 
-        if (data.site_results) {
-          data.site_results.forEach(sr => {
-            const matches = (sr.products || []).length;
-            if (matches > 0) {
-              siteMatchesMap[sr.site_id] = matches;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop();
+
+          for (const chunk of chunks) {
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === 'site_result') {
+                  const sr = event.data;
+                  const matches = (sr.products || []).length;
+                  const pill = document.getElementById(`pill-${sr.site_id}`);
+                  if (matches > 0) {
+                    siteMatchesMap[sr.site_id] = matches;
+                    if (pill) {
+                      pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20 animate-pulse';
+                      pill.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>${sr.site_name}</span><span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${matches}</span>`;
+                    }
+                    sr.products.forEach(p => {
+                      p.matched_reference = query;
+                      p.site_name = sr.site_name;
+                      p.site_url = sr.site_url;
+                      currentResults.push(p);
+                      appendResultCard(p);
+                    });
+                    totalMatchesBadge.textContent = currentResults.length;
+                    resultsSummaryText.textContent = `Streaming results: Found ${currentResults.length} matching items so far...`;
+                  } else if (pill) {
+                    pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-900/40 border border-slate-800/60 text-slate-500 flex items-center gap-1.5';
+                    pill.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span><span>${sr.site_name || 'Store'}</span>`;
+                  }
+                } else if (event.type === 'done') {
+                  clearInterval(timerInterval);
+                  const finalElapsed = ((Date.now() - searchStartTime) / 1000).toFixed(1);
+                  searchTimer.textContent = `${finalElapsed}s`;
+                  totalMatchesBadge.textContent = currentResults.length;
+                  resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
+                  searchStatusText.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check-circle"></i> Search Complete!</span> Found ${currentResults.length} matching watch listings.`;
+                  populateFilterDropdowns();
+                  if (currentResults.length === 0) {
+                    noMatchesState.classList.remove('hidden');
+                  }
+                }
+              } catch (err) {
+                console.error('SSE Chunk parse error:', err);
+              }
             }
-          });
-        }
-
-        totalMatchesBadge.textContent = currentResults.length;
-        resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${data.total_sites_searched || enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
-        searchStatusText.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check-circle"></i> Search Complete!</span> Found ${currentResults.length} matching watch listings.`;
-
-        populateFilterDropdowns();
-        renderResults();
-
-        if (currentResults.length === 0) {
-          noMatchesState.classList.remove('hidden');
+          }
         }
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -1273,6 +1301,62 @@
           filterRefSelect.value = refCounts[currentRefVal] ? currentRefVal : 'all';
         }
       }
+    }
+
+        function createCardElement(p) {
+      const card = document.createElement('div');
+      card.className = 'glass-card rounded-2xl overflow-hidden flex flex-col justify-between hover:border-amber-500/40 transition hover:shadow-xl group animate-fade-in';
+      
+      const scorePercent = Math.round((p.score || 0.8) * 100);
+      const scoreBadgeColor = scorePercent >= 90 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+
+      const imageHtml = p.image 
+        ? `<div class="w-full h-48 bg-slate-900 overflow-hidden relative"><img src="${p.image}" alt="${p.title}" loading="lazy" decoding="async" class="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300" onerror="this.parentElement.style.display='none'"></div>`
+        : `<div class="w-full h-24 bg-gradient-to-br from-slate-900 to-slate-950 flex items-center justify-center text-slate-700 text-3xl"><i class="fa-solid fa-clock"></i></div>`;
+
+      card.innerHTML = `
+        <div>
+          ${imageHtml}
+          <div class="p-5 flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold text-amber-400 tracking-wider uppercase">${p.site_name || 'Dealer'}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${scoreBadgeColor}">${scorePercent}% Match</span>
+            </div>
+
+            ${p.matched_reference ? `
+              <div class="self-start">
+                <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/30 flex items-center gap-1">
+                  <i class="fa-solid fa-tag text-[8px]"></i> Ref: ${p.matched_reference}
+                </span>
+              </div>
+            ` : ''}
+            
+            <h4 class="text-sm font-bold text-white line-clamp-2 hover:text-amber-300 transition" title="${p.title}">
+              <a href="${p.url}" target="_blank" rel="noopener noreferrer">${p.title}</a>
+            </h4>
+            
+            ${p.vendor ? `<span class="text-xs text-slate-400">Maker: <strong class="text-slate-300">${p.vendor}</strong></span>` : ''}
+          </div>
+        </div>
+
+        <div class="p-5 pt-0 border-t border-slate-800/40 mt-3 flex items-center justify-between">
+          <div class="flex flex-col">
+            <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Price</span>
+            <span class="text-base font-extrabold text-amber-400 font-mono">${p.price || 'Inquire'}</span>
+          </div>
+          <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5">
+            <span>View</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
+      `;
+      return card;
+    }
+
+    function appendResultCard(p) {
+      if (noMatchesState) noMatchesState.classList.add('hidden');
+      const card = createCardElement(p);
+      resultsGrid.appendChild(card);
     }
 
     function renderResults() {
