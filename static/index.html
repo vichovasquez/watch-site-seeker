@@ -381,6 +381,18 @@
         </div>
 
         <div class="flex items-center flex-wrap gap-2">
+          <!-- View Switcher (Grid vs Table) -->
+          <div class="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs font-semibold">
+            <button id="btnViewGrid" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-table-cells"></i>
+              <span class="hidden sm:inline">Grid</span>
+            </button>
+            <button id="btnViewTable" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-list"></i>
+              <span class="hidden sm:inline">Table</span>
+            </button>
+          </div>
+
           <!-- Filter by Reference dropdown -->
           <select id="filterRefSelect" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500">
             <option value="all">All References</option>
@@ -393,9 +405,11 @@
 
           <!-- Sort dropdown -->
           <select id="sortSelect" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-500">
-            <option value="score">Sort by Match Score</option>
-            <option value="store">Sort by Website</option>
-            <option value="ref">Sort by Reference</option>
+            <option value="score">Match Score (Best First)</option>
+            <option value="price_asc">Price: Low to High ($ ➔ $$$)</option>
+            <option value="price_desc">Price: High to Low ($$$ ➔ $)</option>
+            <option value="store">Dealer Name (A-Z)</option>
+            <option value="ref">Reference Code</option>
           </select>
         </div>
       </div>
@@ -1032,6 +1046,8 @@
       noMatchesState.classList.add('hidden');
       searchStatusSection.classList.remove('hidden');
       resultsGrid.innerHTML = '';
+      if (resultsTableBody) resultsTableBody.innerHTML = '';
+      if (marketSnapshotBar) marketSnapshotBar.classList.add('hidden');
       currentResults = [];
       totalMatchesBadge.textContent = '0';
       if (filterRefSelect) filterRefSelect.value = 'all';
@@ -1168,6 +1184,8 @@
       noMatchesState.classList.add('hidden');
       searchStatusSection.classList.remove('hidden');
       resultsGrid.innerHTML = '';
+      if (resultsTableBody) resultsTableBody.innerHTML = '';
+      if (marketSnapshotBar) marketSnapshotBar.classList.add('hidden');
       currentResults = [];
       totalMatchesBadge.textContent = '0';
       if (filterRefSelect) filterRefSelect.value = 'all';
@@ -1303,7 +1321,98 @@
       }
     }
 
-        function createCardElement(p) {
+    
+    // View Switcher State
+    let currentViewMode = 'grid'; // 'grid' or 'table'
+    const btnViewGrid = document.getElementById('btnViewGrid');
+    const btnViewTable = document.getElementById('btnViewTable');
+    const resultsTableContainer = document.getElementById('resultsTableContainer');
+    const resultsTableBody = document.getElementById('resultsTableBody');
+    const marketSnapshotBar = document.getElementById('marketSnapshotBar');
+
+    if (btnViewGrid && btnViewTable) {
+      btnViewGrid.addEventListener('click', () => setViewMode('grid'));
+      btnViewTable.addEventListener('click', () => setViewMode('table'));
+    }
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      if (mode === 'grid') {
+        btnViewGrid.className = 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition';
+        btnViewTable.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white flex items-center gap-1.5 transition';
+        resultsGrid.classList.remove('hidden');
+        resultsTableContainer.classList.add('hidden');
+      } else {
+        btnViewTable.className = 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition';
+        btnViewGrid.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white flex items-center gap-1.5 transition';
+        resultsGrid.classList.add('hidden');
+        resultsTableContainer.classList.remove('hidden');
+      }
+    }
+
+    function extractNumericPrice(priceStr) {
+      if (!priceStr || priceStr.toLowerCase().includes('inquire')) return null;
+      const clean = priceStr.split('(')[0];
+      const match = clean.match(/[\d,]+(?:\.\d{2})?/);
+      if (match) {
+        const num = parseFloat(match[0].replace(/,/g, ''));
+        return isNaN(num) ? null : num;
+      }
+      return null;
+    }
+
+    function copyListingDetails(title, price, store, url, btn) {
+      const formatted = `${title} — ${price} at ${store}\n${url}`;
+      navigator.clipboard.writeText(formatted).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.className = btn.className.replace('bg-slate-800', 'bg-emerald-600 text-white border-emerald-400');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Copied!</span>';
+        setTimeout(() => {
+          btn.innerHTML = originalHtml;
+          btn.className = btn.className.replace('bg-emerald-600 text-white border-emerald-400', 'bg-slate-800');
+        }, 2000);
+      }).catch(err => {
+        console.error('Clipboard error:', err);
+      });
+    }
+
+    function updateMarketSnapshot(items) {
+      if (!marketSnapshotBar) return;
+      const pricedItems = items.map(p => ({
+        ...p,
+        numericPrice: extractNumericPrice(p.price)
+      })).filter(p => p.numericPrice !== null && p.numericPrice > 500);
+
+      if (pricedItems.length === 0) {
+        marketSnapshotBar.classList.add('hidden');
+        return;
+      }
+
+      marketSnapshotBar.classList.remove('hidden');
+      pricedItems.sort((a, b) => a.numericPrice - b.numericPrice);
+
+      const lowest = pricedItems[0];
+      const highest = pricedItems[pricedItems.length - 1];
+      const medianIndex = Math.floor(pricedItems.length / 2);
+      const median = pricedItems.length % 2 === 0
+        ? (pricedItems[medianIndex - 1].numericPrice + pricedItems[medianIndex].numericPrice) / 2
+        : pricedItems[medianIndex].numericPrice;
+
+      const uniqueStores = new Set(items.map(p => p.site_name || 'Dealer')).size;
+
+      document.getElementById('statLowestPrice').textContent = `$${lowest.numericPrice.toLocaleString()}`;
+      document.getElementById('statLowestDealer').textContent = lowest.site_name || 'Dealer';
+
+      document.getElementById('statMedianPrice').textContent = `$${Math.round(median).toLocaleString()}`;
+
+      document.getElementById('statHighestPrice').textContent = `$${highest.numericPrice.toLocaleString()}`;
+      document.getElementById('statHighestDealer').textContent = highest.site_name || 'Dealer';
+
+      document.getElementById('statTotalPriced').textContent = `${pricedItems.length} priced`;
+      document.getElementById('statDealersCount').textContent = `across ${uniqueStores} dealers`;
+    }
+
+    function createCardElement(p) {
       const card = document.createElement('div');
       card.className = 'glass-card rounded-2xl overflow-hidden flex flex-col justify-between hover:border-amber-500/40 transition hover:shadow-xl group animate-fade-in';
       
@@ -1313,6 +1422,11 @@
       const imageHtml = p.image 
         ? `<div class="w-full h-48 bg-slate-900 overflow-hidden relative"><img src="${p.image}" alt="${p.title}" loading="lazy" decoding="async" class="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300" onerror="this.parentElement.style.display='none'"></div>`
         : `<div class="w-full h-24 bg-gradient-to-br from-slate-900 to-slate-950 flex items-center justify-center text-slate-700 text-3xl"><i class="fa-solid fa-clock"></i></div>`;
+
+      const safeTitle = (p.title || '').replace(/"/g, '&quot;');
+      const safePrice = (p.price || 'Inquire').replace(/"/g, '&quot;');
+      const safeStore = (p.site_name || 'Dealer').replace(/"/g, '&quot;');
+      const safeUrl = (p.url || '#').replace(/"/g, '&quot;');
 
       card.innerHTML = `
         <div>
@@ -1339,28 +1453,83 @@
           </div>
         </div>
 
-        <div class="p-5 pt-0 border-t border-slate-800/40 mt-3 flex items-center justify-between">
+        <div class="p-5 pt-0 border-t border-slate-800/40 mt-3 flex items-center justify-between gap-2">
           <div class="flex flex-col">
             <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Price</span>
             <span class="text-base font-extrabold text-amber-400 font-mono">${p.price || 'Inquire'}</span>
           </div>
-          <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5">
-            <span>View</span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-          </a>
+          <div class="flex items-center gap-1.5">
+            <button onclick="copyListingDetails('${safeTitle}', '${safePrice}', '${safeStore}', '${safeUrl}', this)" title="Copy Watch Summary & Link" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5">
+              <span>View</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+          </div>
         </div>
       `;
       return card;
+    }
+
+    function createTableRowElement(p) {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-900/60 transition';
+
+      const scorePercent = Math.round((p.score || 0.8) * 100);
+      const scoreBadgeColor = scorePercent >= 90 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+
+      const imageHtml = p.image
+        ? `<img src="${p.image}" alt="${p.title}" loading="lazy" class="w-10 h-10 object-contain rounded-lg bg-slate-900 border border-slate-800 p-0.5" onerror="this.style.display='none'">`
+        : `<div class="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-slate-600"><i class="fa-solid fa-clock"></i></div>`;
+
+      const safeTitle = (p.title || '').replace(/"/g, '&quot;');
+      const safePrice = (p.price || 'Inquire').replace(/"/g, '&quot;');
+      const safeStore = (p.site_name || 'Dealer').replace(/"/g, '&quot;');
+      const safeUrl = (p.url || '#').replace(/"/g, '&quot;');
+
+      tr.innerHTML = `
+        <td class="p-3.5 text-center">${imageHtml}</td>
+        <td class="p-3.5 font-bold text-white hover:text-amber-300">
+          <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="line-clamp-1">${p.title}</a>
+        </td>
+        <td class="p-3.5 font-mono text-amber-400 font-semibold">${p.matched_reference || '—'}</td>
+        <td class="p-3.5 text-slate-300 font-medium">${p.site_name || 'Dealer'}</td>
+        <td class="p-3.5 font-mono font-extrabold text-amber-400 text-sm whitespace-nowrap">${p.price || 'Inquire'}</td>
+        <td class="p-3.5 text-center">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${scoreBadgeColor}">${scorePercent}%</span>
+        </td>
+        <td class="p-3.5 text-right whitespace-nowrap">
+          <div class="flex items-center justify-end gap-1.5">
+            <button onclick="copyListingDetails('${safeTitle}', '${safePrice}', '${safeStore}', '${safeUrl}', this)" title="Copy Watch Summary" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1">
+              <span>View</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+            </a>
+          </div>
+        </td>
+      `;
+      return tr;
     }
 
     function appendResultCard(p) {
       if (noMatchesState) noMatchesState.classList.add('hidden');
       const card = createCardElement(p);
       resultsGrid.appendChild(card);
+
+      if (resultsTableBody) {
+        const row = createTableRowElement(p);
+        resultsTableBody.appendChild(row);
+      }
     }
+
 
     function renderResults() {
       resultsGrid.innerHTML = '';
+      if (resultsTableBody) resultsTableBody.innerHTML = '';
+      if (marketSnapshotBar) marketSnapshotBar.classList.add('hidden');
       const filterRef = filterRefSelect.value;
       const filterStore = filterStoreSelect.value;
       const sortBy = sortSelect.value;
