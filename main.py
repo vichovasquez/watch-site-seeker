@@ -32,10 +32,19 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(AuthMiddleware)
 
+# Custom static files handler ensuring strict no-cache headers on all assets
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
 # Mount static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    app.mount("/static", NoCacheStaticFiles(directory=static_dir), name="static")
 
 searcher = MultiSiteSearcher(timeout=4.5)
 
@@ -343,6 +352,7 @@ async def read_root():
             rev = os.environ.get("K_REVISION", "dev-local")
             badge_text = f"v{APP_VERSION} • {rev}"
             html = html.replace("__REVISION_BADGE_TEXT__", badge_text)
+            html = html.replace("__REVISION_ID__", rev)
             return HTMLResponse(
                 content=html,
                 headers={
