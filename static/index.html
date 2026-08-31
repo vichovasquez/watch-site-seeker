@@ -415,6 +415,56 @@
       </div>
 
       
+            <!-- MARKET SNAPSHOT & PRICE ANALYTICS STRIP -->
+      <div id="marketSnapshotBar" class="hidden glass-panel p-5 rounded-2xl border-2 border-amber-500/40 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-2xl shadow-black/60">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-xl shadow-inner">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase font-extrabold text-amber-400 tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Live Market Valuation Snapshot</span>
+            </div>
+            <div id="marketSnapshotQuery" class="text-sm font-bold text-white mt-0.5">Live Pricing Intelligence</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1 max-w-3xl">
+          <div class="p-3 rounded-xl bg-slate-900/95 border border-emerald-500/30 flex flex-col">
+            <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-arrow-trend-down"></i> Lowest Price
+            </span>
+            <span id="statLowestPrice" class="text-base font-mono font-extrabold text-emerald-300 mt-0.5">—</span>
+            <span id="statLowestDealer" class="text-[11px] text-slate-400 font-medium truncate mt-0.5">—</span>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-900/95 border border-amber-500/30 flex flex-col">
+            <span class="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-scale-balanced"></i> Median Price
+            </span>
+            <span id="statMedianPrice" class="text-base font-mono font-extrabold text-amber-300 mt-0.5">—</span>
+            <span class="text-[11px] text-slate-500 font-medium mt-0.5">Market benchmark</span>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-900/95 border border-blue-500/30 flex flex-col">
+            <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-arrow-trend-up"></i> Highest Price
+            </span>
+            <span id="statHighestPrice" class="text-base font-mono font-extrabold text-blue-300 mt-0.5">—</span>
+            <span id="statHighestDealer" class="text-[11px] text-slate-400 font-medium truncate mt-0.5">—</span>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-900/95 border border-purple-500/30 flex flex-col">
+            <span class="text-[10px] text-purple-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-store"></i> Active Listings
+            </span>
+            <span id="statTotalPriced" class="text-base font-mono font-extrabold text-purple-300 mt-0.5">0</span>
+            <span id="statDealersCount" class="text-[11px] text-slate-400 font-medium mt-0.5">across dealers</span>
+          </div>
+        </div>
+      </div>
+
             <!-- PROTECTED MARKETPLACES 1-CLICK LAUNCHPAD -->
       <div id="protectedLaunchpad" class="glass-panel p-5 rounded-2xl border border-blue-500/40 bg-slate-900/90 shadow-xl shadow-black/40 flex flex-col gap-3">
         <div class="flex items-center justify-between flex-wrap gap-2">
