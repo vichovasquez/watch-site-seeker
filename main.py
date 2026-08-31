@@ -321,15 +321,30 @@ async def get_me(request: Request):
     email = get_current_user_email(request)
     return {"email": email, "authenticated": bool(email)}
 
+APP_VERSION = "2.7.1"
+
 # ================= MAIN APPLICATION ROUTES =================
+
+@app.get("/api/version")
+async def get_version():
+    rev = os.environ.get("K_REVISION", "dev-local")
+    return {
+        "version": APP_VERSION,
+        "revision": rev,
+        "service": os.environ.get("K_SERVICE", "watch-finder")
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
+            html = f.read()
+            rev = os.environ.get("K_REVISION", "dev-local")
+            badge_text = f"v{APP_VERSION} • {rev}"
+            html = html.replace("__REVISION_BADGE_TEXT__", badge_text)
             return HTMLResponse(
-                content=f.read(),
+                content=html,
                 headers={
                     "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
                     "Pragma": "no-cache",

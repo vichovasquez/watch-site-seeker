@@ -121,9 +121,26 @@
     }
 
     async function init() {
+      fetchVersion();
       await fetchSites();
       await fetchReferences();
       setupEventListeners();
+    }
+
+    async function fetchVersion() {
+      try {
+        const res = await fetch('/api/version', { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = await res.json();
+          const badge = document.getElementById('headerVersionBadge');
+          if (badge && data) {
+            badge.textContent = `v${data.version || '2.7.1'} • ${data.revision || 'live'}`;
+            badge.title = `Cloud Run Service: ${data.service || 'watch-finder'} | Revision: ${data.revision || 'live'}`;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch version info:', err);
+      }
     }
 
     async function fetchSites() {
