@@ -59,7 +59,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         
         # Public bypass routes
-        if path.startswith("/auth/") or path.startswith("/static/css/") or path.startswith("/static/js/") or path == "/favicon.ico":
+        if path.startswith("/auth/") or path.startswith("/static/") or path == "/favicon.ico":
             return await call_next(request)
             
         # Check authentication
