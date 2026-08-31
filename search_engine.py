@@ -4,12 +4,25 @@ import json
 import re
 import time
 import asyncio
+import functools
+import logging
+from typing import List, Dict, Any, Optional
 import httpx
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any, Optional
-from concurrent.futures import ThreadPoolExecutor
+from pydantic import BaseModel, Field
 
-SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=64)
+# Structured Logging Setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("watch_finder.engine")
+
+# Parser Engine Detection (lxml is 3x-5x faster than html.parser)
+try:
+    import lxml
+    PARSER_ENGINE = "lxml"
+except ImportError:
+    PARSER_ENGINE = "html.parser"
+
+logger.info(f"Initialized search engine with HTML Parser: '{PARSER_ENGINE}'")
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
@@ -25,7 +38,32 @@ DEFAULT_HEADERS = {
     "Upgrade-Insecure-Requests": "1",
 }
 
-# HTTPX Connection-Pooled Async Client Singleton
+# --- TYPED PYDANTIC MODELS ---
+class WatchListing(BaseModel):
+    title: str
+    price: str = "Inquire"
+    url: str
+    image: Optional[str] = ""
+    site_id: Optional[str] = None
+    site_name: Optional[str] = "Dealer"
+    site_url: Optional[str] = ""
+    vendor: Optional[str] = ""
+    score: float = 0.8
+    matched_reference: Optional[str] = None
+    source: Optional[str] = "Web"
+
+class SiteSearchResult(BaseModel):
+    site_id: str
+    site_name: str
+    site_url: str
+    category: str = "Dealer"
+    query: str
+    status: str = "success"
+    matches_count: int = 0
+    products: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+# --- ASYNC CONNECTION POOL SINGLETON ---
 _ASYNC_CLIENT: Optional[httpx.AsyncClient] = None
 
 def get_async_client() -> httpx.AsyncClient:
@@ -48,6 +86,7 @@ async def close_async_client():
         await _ASYNC_CLIENT.aclose()
         _ASYNC_CLIENT = None
 
+# --- KNOWN BRANDS & SYNONYMS ---
 KNOWN_BRANDS: Dict[str, List[str]] = {
     "cartier": ["cartier"],
     "rolex": ["rolex"],
@@ -98,26 +137,19 @@ _SEARCH_CACHE: Dict[str, Any] = {}
 _CACHE_EXPIRY: Dict[str, float] = {}
 DEALER_LATENCY_STATS: Dict[str, float] = {}
 
-def clean_text(text: str) -> str:
-    if not text:
-        return ""
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
+# --- PRE-COMPILED STATIC REGEXES ---
+RE_TAGS = re.compile(r"<[^>]+>")
+RE_WHITESPACE = re.compile(r"\s+")
+RE_SLASH_HYPHEN = re.compile(r'[a-zA-Z0-9]+[/-][a-zA-Z0-9/-]+')
+RE_DOTTED = re.compile(r'\d{3,4}\.\d{3,4}')
+RE_MODEL_CODE = re.compile(r'(?:\d{4,6}[A-Za-z]{1,4}|[A-Za-z]{1,3}\d{4,6}[A-Za-z]{0,3}|\d{4,6})')
+RE_PUNCTUATION = re.compile(r'[/\_\-\.]+')
+RE_ALL_PUNCT_SPACE = re.compile(r'[/\_\-\.\s]+')
+RE_PRICE_PATTERNS = re.compile(r'(\$|€|£|¥|￥)\s?[\d,]+(?:\.\d{2})?|([\d,]+)\s?円')
+RE_PRICE_WATCHRECON = re.compile(r'\$[\d,]+')
 
-
-# --- CURRENCY CONVERSION & TRANSLATION ENGINE ---
-EXCHANGE_RATES = {
-    "JPY": 0.0068,  # 1 JPY = $0.0068 USD (~147 JPY/USD)
-    "EUR": 1.08,    # 1 EUR = $1.08 USD
-    "GBP": 1.30,    # 1 GBP = $1.30 USD
-    "CHF": 1.15,    # 1 CHF = $1.15 USD
-    "CAD": 0.74,    # 1 CAD = $0.74 USD
-    "AUD": 0.66     # 1 AUD = $0.66 USD
-}
-
-TRANSLATION_MAP = [
-    # Japanese Brands & Models
+# Translation pre-compiled rules
+RAW_TRANSLATIONS = [
     (r'ロレックス', 'Rolex'),
     (r'パテック\s*フィリップ', 'Patek Philippe'),
     (r'オーデマ\s*ピゲ', 'Audemars Piguet'),
@@ -148,8 +180,6 @@ TRANSLATION_MAP = [
     (r'タンク', 'Tank'),
     (r'サントス', 'Santos'),
     (r'レベルソ', 'Reverso'),
-    
-    # Extended Japanese Watch Models & Terms
     (r'チェリーニ', 'Cellini'),
     (r'オイスター\s*パーペチュアル\s*デイト', 'Oyster Perpetual Date'),
     (r'オイスター\s*パーペチュアル', 'Oyster Perpetual'),
@@ -177,8 +207,6 @@ TRANSLATION_MAP = [
     (r'修理', 'Service / Repair'),
     (r'明細', 'Receipt / Invoice'),
     (r'ケース', 'Case'),
-
-    # Japanese Watch Terms
     (r'未使用品|新品', 'Unworn / Brand New'),
     (r'中古(?:品)?', 'Pre-Owned'),
     (r'極美品|美品', 'Excellent Condition'),
@@ -205,8 +233,6 @@ TRANSLATION_MAP = [
     (r'プラチナ|PT', 'Platinum'),
     (r'無垢', 'Solid Gold'),
     (r'年式|年製|年', ' Year '),
-
-    # German Terms
     (r'ungetragen', 'Unworn'),
     (r'sehr gut', 'Very Good'),
     (r'gut', 'Good'),
@@ -221,8 +247,34 @@ TRANSLATION_MAP = [
     (r'handaufzug', 'Manual Wind'),
 ]
 
+COMPILED_TRANSLATIONS = [(re.compile(p, re.IGNORECASE), repl) for p, repl in RAW_TRANSLATIONS]
+
+# --- LRU CACHED DYNAMIC REGEX COMPILERS ---
+@functools.lru_cache(maxsize=2048)
+def get_digit_boundary_regex(token: str) -> re.Pattern:
+    return re.compile(r'(?<!\d)' + re.escape(token) + r'(?!\d)', re.IGNORECASE)
+
+@functools.lru_cache(maxsize=2048)
+def get_word_boundary_regex(token: str) -> re.Pattern:
+    return re.compile(r'' + re.escape(token) + r'', re.IGNORECASE)
+
+def clean_text(text: str) -> str:
+    if not text:
+        return ""
+    text = RE_TAGS.sub(" ", text)
+    return RE_WHITESPACE.sub(" ", text).strip()
+
+# --- CURRENCY CONVERSION & TRANSLATION ENGINE ---
+EXCHANGE_RATES = {
+    "JPY": 0.0068,  # 1 JPY = $0.0068 USD (~147 JPY/USD)
+    "EUR": 1.08,    # 1 EUR = $1.08 USD
+    "GBP": 1.30,    # 1 GBP = $1.30 USD
+    "CHF": 1.15,    # 1 CHF = $1.15 USD
+    "CAD": 0.74,    # 1 CAD = $0.74 USD
+    "AUD": 0.66     # 1 AUD = $0.66 USD
+}
+
 def convert_currency_to_usd(price_str: str) -> str:
-    """Converts foreign currencies to USD while preserving the original price in parentheses."""
     if not price_str or price_str == "Inquire" or "inquire" in price_str.lower():
         return "Inquire"
     
@@ -230,41 +282,33 @@ def convert_currency_to_usd(price_str: str) -> str:
     if "USD (" in clean_p:
         return clean_p
     
-    # 1. Japanese Yen (¥ or ￥ or 円)
     if any(sym in clean_p for sym in ["¥", "￥", "円"]):
         digits = re.sub(r'[^\d]', '', clean_p)
         if digits:
-            val = int(digits)
-            usd = int(round(val * EXCHANGE_RATES["JPY"]))
+            usd = int(round(int(digits) * EXCHANGE_RATES["JPY"]))
             return f"${usd:,} USD ({clean_p})"
             
-    # 2. Euros (€)
     if "€" in clean_p or "eur" in clean_p.lower():
         num_str = re.sub(r'[^\d,\.]', '', clean_p)
         num_str = num_str.replace('.', '').replace(',', '.') if (',' in num_str and '.' in num_str) or (',' in num_str and len(num_str.split(',')[-1]) == 2) else num_str.replace(',', '')
         try:
-            val = float(num_str)
-            usd = int(round(val * EXCHANGE_RATES["EUR"]))
+            usd = int(round(float(num_str) * EXCHANGE_RATES["EUR"]))
             return f"${usd:,} USD ({clean_p})"
         except ValueError:
             pass
 
-    # 3. British Pounds (£)
     if "£" in clean_p or "gbp" in clean_p.lower():
         num_str = re.sub(r'[^\d\.]', '', clean_p.replace(',', ''))
         try:
-            val = float(num_str)
-            usd = int(round(val * EXCHANGE_RATES["GBP"]))
+            usd = int(round(float(num_str) * EXCHANGE_RATES["GBP"]))
             return f"${usd:,} USD ({clean_p})"
         except ValueError:
             pass
 
-    # 4. Swiss Francs (CHF)
     if "chf" in clean_p.lower():
         num_str = re.sub(r'[^\d\.]', '', clean_p.replace(',', '').replace("'", ""))
         try:
-            val = float(num_str)
-            usd = int(round(val * EXCHANGE_RATES["CHF"]))
+            usd = int(round(float(num_str) * EXCHANGE_RATES["CHF"]))
             return f"${usd:,} USD ({clean_p})"
         except ValueError:
             pass
@@ -272,38 +316,32 @@ def convert_currency_to_usd(price_str: str) -> str:
     return clean_p
 
 def translate_to_english(text: str) -> str:
-    """Translates common foreign watch terms (Japanese, German) to clean English."""
     if not text:
         return ""
     translated = text
-    for pattern, replacement in TRANSLATION_MAP:
-        translated = re.sub(pattern, replacement, translated, flags=re.IGNORECASE)
-    translated = re.sub(r'\s+', ' ', translated).strip()
-    return translated
+    for pattern_re, replacement in COMPILED_TRANSLATIONS:
+        translated = pattern_re.sub(replacement, translated)
+    return RE_WHITESPACE.sub(" ", translated).strip()
 
 def extract_reference_tokens(query: str) -> List[str]:
-    """Extracts watch reference number variations from a user query."""
     q_clean = query.strip()
     tokens = []
     
-    # 1. Matches patterns like 4200H/222A-B934 or 5231G-001 or 126518LN
-    slash_hyphen_match = re.findall(r'[a-zA-Z0-9]+[/-][a-zA-Z0-9/-]+', q_clean)
+    slash_hyphen_match = RE_SLASH_HYPHEN.findall(q_clean)
     for m in slash_hyphen_match:
         tokens.append(m.lower())
         for part in re.split(r'[/-]', m):
             if len(part) >= 3:
                 tokens.append(part.lower())
                 
-    # 2. Matches dotted references like 405.035
-    dotted_matches = re.findall(r'\b\d{3,4}\.\d{3,4}\b', q_clean)
+    dotted_matches = RE_DOTTED.findall(q_clean)
     for dm in dotted_matches:
         tokens.append(dm)
         tokens.append(dm.replace('.', ' '))
         tokens.append(dm.replace('.', '-'))
         tokens.append(dm.replace('.', ''))
 
-    # 3. Matches alphanumeric model codes like 126518LN or 5231G
-    ref_matches = re.findall(r'\b(?:\d{4,6}[A-Za-z]{1,4}|[A-Za-z]{1,3}\d{4,6}[A-Za-z]{0,3}|\d{4,6})\b', q_clean)
+    ref_matches = RE_MODEL_CODE.findall(q_clean)
     for rm in ref_matches:
         if len(rm) >= 3:
             tokens.append(rm.lower())
@@ -311,7 +349,6 @@ def extract_reference_tokens(query: str) -> List[str]:
             if len(pure_digits) >= 4 and pure_digits != rm:
                 tokens.append(pure_digits)
 
-    # De-duplicate preserving order
     seen = set()
     result = []
     for t in tokens:
@@ -321,12 +358,11 @@ def extract_reference_tokens(query: str) -> List[str]:
     return result
 
 def extract_query_brands(query: str) -> List[str]:
-    """Identifies watch brand families mentioned in the query."""
     q_low = query.lower()
     found_brands = []
     
     for brand, synonyms in KNOWN_BRANDS.items():
-        if any(re.search(r'\b' + re.escape(syn) + r'\b', q_low) for syn in synonyms):
+        if any(get_word_boundary_regex(syn).search(q_low) for syn in synonyms):
             found_brands.append(brand)
             
     if not found_brands:
@@ -338,7 +374,6 @@ def extract_query_brands(query: str) -> List[str]:
     return found_brands
 
 def normalize_watch_query(query: str) -> List[str]:
-    """Generates ordered search query variations to optimize dealer catalog lookups."""
     q_clean = clean_text(query)
     variations = [q_clean]
     
@@ -347,11 +382,11 @@ def normalize_watch_query(query: str) -> List[str]:
         if tok not in variations and tok.lower() != q_clean.lower():
             variations.append(tok)
             
-    no_punct = re.sub(r'[/\\_\-\.]+', ' ', q_clean).strip()
+    no_punct = RE_PUNCTUATION.sub(' ', q_clean).strip()
     if no_punct not in variations:
         variations.append(no_punct)
         
-    no_space = re.sub(r'[/\\_\-\.\s]+', '', q_clean).strip()
+    no_space = RE_ALL_PUNCT_SPACE.sub('', q_clean).strip()
     if no_space not in variations:
         variations.append(no_space)
         
@@ -382,8 +417,8 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     if query_brands:
         for opposing_brand, syns in KNOWN_BRANDS.items():
             if opposing_brand not in query_brands:
-                if any(re.search(r'\b' + re.escape(syn) + r'\b', primary_text) for syn in syns):
-                    has_target_brand = any(any(re.search(r'\b' + re.escape(ts) + r'\b', primary_text) for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
+                if any(get_word_boundary_regex(syn).search(primary_text) for syn in syns):
+                    has_target_brand = any(any(get_word_boundary_regex(ts).search(primary_text) for ts in KNOWN_BRANDS.get(qb, [])) for qb in query_brands)
                     if not has_target_brand:
                         return 0.0
 
@@ -394,13 +429,11 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
         for rt in ref_tokens:
             rt_low = rt.lower()
             if rt_low.isdigit():
-                pattern = r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)'
-                if re.search(pattern, primary_text):
+                if get_digit_boundary_regex(rt_low).search(primary_text):
                     has_ref_match = True
                     break
             else:
-                pattern = r'\b' + re.escape(rt_low) + r'\b'
-                if re.search(pattern, primary_text) or rt_low in clean_url_path:
+                if get_word_boundary_regex(rt_low).search(primary_text) or rt_low in clean_url_path:
                     has_ref_match = True
                     break
                 if "-" in rt_low and rt_low.split("-")[0] in primary_text:
@@ -424,14 +457,14 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
     if q in primary_text:
         return 1.0
 
-    cleaned_q = re.sub(r'[/\\_\-\.]+', ' ', q).strip()
+    cleaned_q = RE_PUNCTUATION.sub(' ', q).strip()
     if cleaned_q and cleaned_q in primary_text:
         return 0.98
 
     for rt in ref_tokens:
         rt_low = rt.lower()
         if rt_low.isdigit():
-            if re.search(r'(?<!\d)' + re.escape(rt_low) + r'(?!\d)', primary_text):
+            if get_digit_boundary_regex(rt_low).search(primary_text):
                 return 0.95
         else:
             if rt_low in primary_text or rt_low in clean_url_path:
@@ -443,7 +476,6 @@ def calculate_match_score(query: str, title: str, description: str = "", url: st
 # --- HIGH-PERFORMANCE ASYNC NETWORKING LAYER ---
 
 async def fetch_url_async(url: str, timeout: float = 4.5, retries: int = 2) -> Dict[str, Any]:
-    """Async URL fetcher using pooled HTTP/2 client with adaptive backoff."""
     client = get_async_client()
     last_err = None
     
@@ -480,7 +512,7 @@ async def fetch_url_async(url: str, timeout: float = 4.5, retries: int = 2) -> D
 
 async def search_shopify_async(base_url: str, query: str, original_query: str = "", timeout: float = 4.5) -> List[Dict]:
     target_q = original_query or query
-    clean_param = re.sub(r'[/\\_]+', ' ', query).strip()
+    clean_param = re.sub(r'[/\_]+', ' ', query).strip()
     encoded_q = urllib.parse.quote(clean_param)
 
     # Method 1: Async Suggest API
@@ -537,7 +569,7 @@ async def scrape_html_search_async(base_url: str, search_url: str, query: str, t
         return []
     
     html = resp["text"]
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, PARSER_ENGINE)
     products = []
     
     # 1. Specialized Parser for WatchRecon
@@ -549,7 +581,7 @@ async def scrape_html_search_async(base_url: str, search_url: str, query: str, t
             trans_title = translate_to_english(title_text)
             score = calculate_match_score(query, trans_title, "", p_url)
             if score >= 0.70 and len(title_text) > 10:
-                price_match = re.search(r'\$[\d,]+', title_text)
+                price_match = RE_PRICE_WATCHRECON.search(title_text)
                 price = convert_currency_to_usd(price_match.group(0)) if price_match else "Inquire"
                 if not any(p["url"] == p_url for p in products):
                     products.append({
@@ -602,7 +634,7 @@ async def scrape_html_search_async(base_url: str, search_url: str, query: str, t
         if not title or len(title) < 5 or "add to cart" in title.lower():
             continue
             
-        title = re.sub(r'\s+', ' ', title).strip()
+        title = RE_WHITESPACE.sub(' ', title).strip()
         trans_title = translate_to_english(title)
         
         score = calculate_match_score(query, trans_title, text, p_url)
@@ -611,7 +643,7 @@ async def scrape_html_search_async(base_url: str, search_url: str, query: str, t
         
         # Price extraction (USD, EUR, GBP, JPY ¥ / 円)
         price = "Inquire"
-        price_match = re.search(r'(\$|€|£|¥|￥)\s?[\d,]+(?:\.\d{2})?|([\d,]+)\s?円', text + ' ' + title)
+        price_match = RE_PRICE_PATTERNS.search(text + ' ' + title)
         if price_match:
             price = convert_currency_to_usd(price_match.group(0).strip())
             
@@ -642,7 +674,7 @@ async def scrape_html_search_async(base_url: str, search_url: str, query: str, t
                     trans_txt = translate_to_english(txt)
                     score = calculate_match_score(query, trans_txt, "", p_url)
                     if score >= 0.70:
-                        price_match = re.search(r'(\$|€|£|¥|￥)\s?[\d,]+|([\d,]+)\s?円', txt)
+                        price_match = RE_PRICE_PATTERNS.search(txt)
                         price = convert_currency_to_usd(price_match.group(0).strip()) if price_match else "Inquire"
                         if not any(p["url"] == p_url for p in products):
                             products.append({
@@ -657,7 +689,6 @@ async def scrape_html_search_async(base_url: str, search_url: str, query: str, t
 
 
 async def async_search_site(site: Dict, query: str, timeout: float = 4.5) -> Dict[str, Any]:
-    """Asynchronously searches a single website with connection reuse and in-memory caching."""
     base_url = site["url"].rstrip("/")
     site_id = site.get("id")
     site_name = site.get("name", "Store")
@@ -751,10 +782,10 @@ class MultiSiteSearcher:
         self.timeout = timeout
 
     async def search_site(self, site: Dict, query: str) -> Dict[str, Any]:
-        """Runs search for a single site asynchronously."""
         try:
             return await async_search_site(site, query, self.timeout)
         except Exception as e:
+            logger.warning(f"Error searching {site.get('name')}: {e}")
             return {
                 "site_id": site.get("id"),
                 "site_name": site.get("name"),
@@ -766,7 +797,6 @@ class MultiSiteSearcher:
             }
 
     async def search_all(self, sites: List[Dict], query: str, max_total_wait: float = 5.0) -> List[Dict[str, Any]]:
-        """Searches all enabled sites concurrently with HTTP/2 async connection pooling."""
         enabled_sites = [s for s in sites if s.get("enabled", True)]
         if not enabled_sites:
             return []

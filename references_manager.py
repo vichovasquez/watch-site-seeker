@@ -35,6 +35,7 @@ def load_references() -> List[str]:
         return DEFAULT_REFERENCES
 
 def save_references(references: List[str]) -> bool:
+    tmp_file = f"{REFERENCES_FILE}.tmp"
     try:
         cleaned = []
         seen = set()
@@ -43,11 +44,17 @@ def save_references(references: List[str]) -> bool:
             if item and item not in seen:
                 seen.add(item)
                 cleaned.append(item)
-        with open(REFERENCES_FILE, "w", encoding="utf-8") as f:
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(cleaned, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_file, REFERENCES_FILE)
         return True
     except Exception as e:
-        print(f"Error saving references: {e}")
+        if os.path.exists(tmp_file):
+            try:
+                os.remove(tmp_file)
+            except Exception:
+                pass
+        print(f"Error saving references atomically: {e}")
         return False
 
 def add_reference(ref: str) -> List[str]:

@@ -65,12 +65,19 @@ def load_sites() -> List[Dict]:
         return []
 
 def save_sites(sites: List[Dict]) -> bool:
+    tmp_file = f"{SITES_FILE}.tmp"
     try:
-        with open(SITES_FILE, "w", encoding="utf-8") as f:
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(sites, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_file, SITES_FILE)
         return True
     except Exception as e:
-        print(f"Error saving sites: {e}")
+        if os.path.exists(tmp_file):
+            try:
+                os.remove(tmp_file)
+            except Exception:
+                pass
+        print(f"Error saving sites atomically: {e}")
         return False
 
 def extract_name_from_url(url: str) -> str:
