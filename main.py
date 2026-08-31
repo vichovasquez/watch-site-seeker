@@ -48,6 +48,15 @@ if os.path.exists(static_dir):
 
 searcher = MultiSiteSearcher(timeout=4.5)
 
+@app.on_event("startup")
+async def startup_sync():
+    # Always load the latest Bulk Watch Reference Search Google Doc at startup
+    try:
+        res = references_manager.sync_references_from_google_doc()
+        print(f"[STARTUP] Successfully synced {res.get('count', 0)} watch references from Google Doc.")
+    except Exception as e:
+        print(f"[STARTUP] Could not sync references from Google Doc: {e}")
+
 # ================= AUTHENTICATION ROUTES =================
 
 @app.get("/auth/login", response_class=HTMLResponse)
