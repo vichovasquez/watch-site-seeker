@@ -161,8 +161,8 @@
         const res = await fetch('/api/references');
         const data = await res.json();
         currentReferences = Array.isArray(data) ? data : (data.references || []);
-        // Default: select all references
-        selectedReferences = new Set(currentReferences);
+        // Default: start with all references deselected
+        selectedReferences = new Set();
         updateReferencesUI();
       } catch (err) {
         console.error('Failed to load references:', err);
