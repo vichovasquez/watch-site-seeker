@@ -895,7 +895,6 @@
     function renderResults() {
       resultsGrid.innerHTML = '';
       if (resultsTableBody) resultsTableBody.innerHTML = '';
-      if (marketSnapshotBar) marketSnapshotBar.classList.add('hidden');
       const filterRef = filterRefSelect.value;
       const filterStore = filterStoreSelect.value;
       const sortBy = sortSelect.value;
@@ -910,7 +909,25 @@
         filtered = filtered.filter(p => p.site_name === filterStore);
       }
 
-      if (sortBy === 'store') {
+      if (sortBy === 'price_asc') {
+        filtered.sort((a, b) => {
+          const pa = extractNumericPrice(a.price);
+          const pb = extractNumericPrice(b.price);
+          if (pa === null && pb === null) return 0;
+          if (pa === null) return 1;
+          if (pb === null) return -1;
+          return pa - pb;
+        });
+      } else if (sortBy === 'price_desc') {
+        filtered.sort((a, b) => {
+          const pa = extractNumericPrice(a.price);
+          const pb = extractNumericPrice(b.price);
+          if (pa === null && pb === null) return 0;
+          if (pa === null) return 1;
+          if (pb === null) return -1;
+          return pb - pa;
+        });
+      } else if (sortBy === 'store') {
         filtered.sort((a, b) => (a.site_name || '').localeCompare(b.site_name || ''));
       } else if (sortBy === 'ref') {
         filtered.sort((a, b) => (a.matched_reference || '').localeCompare(b.matched_reference || ''));
@@ -918,62 +935,24 @@
         filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
       }
 
+      // Update Market Valuation Snapshot with active filtered listings
+      updateMarketSnapshot(filtered);
+
       if (filtered.length === 0) {
         noMatchesState.classList.remove('hidden');
+        if (marketSnapshotBar) marketSnapshotBar.classList.add('hidden');
         return;
       }
 
       noMatchesState.classList.add('hidden');
 
       filtered.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'glass-card rounded-2xl overflow-hidden flex flex-col justify-between hover:border-amber-500/40 transition hover:shadow-xl group';
-        
-        const scorePercent = Math.round((p.score || 0.8) * 100);
-        const scoreBadgeColor = scorePercent >= 90 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-
-        const imageHtml = p.image 
-          ? `<div class="w-full h-48 bg-slate-900 overflow-hidden relative"><img src="${p.image}" alt="${p.title}" class="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300" onerror="this.parentElement.style.display='none'"></div>`
-          : `<div class="w-full h-24 bg-gradient-to-br from-slate-900 to-slate-950 flex items-center justify-center text-slate-700 text-3xl"><i class="fa-solid fa-clock"></i></div>`;
-
-        card.innerHTML = `
-          <div>
-            ${imageHtml}
-            <div class="p-5 flex flex-col gap-2">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-[11px] font-bold text-amber-400 tracking-wider uppercase">${p.site_name}</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${scoreBadgeColor}">${scorePercent}% Match</span>
-              </div>
-
-              ${p.matched_reference ? `
-                <div class="self-start">
-                  <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/30 flex items-center gap-1">
-                    <i class="fa-solid fa-tag text-[8px]"></i> Ref: ${p.matched_reference}
-                  </span>
-                </div>
-              ` : ''}
-              
-              <h4 class="text-sm font-bold text-white line-clamp-2 hover:text-amber-300 transition" title="${p.title}">
-                <a href="${p.url}" target="_blank">${p.title}</a>
-              </h4>
-              
-              ${p.vendor ? `<span class="text-xs text-slate-400">Maker: <strong class="text-slate-300">${p.vendor}</strong></span>` : ''}
-            </div>
-          </div>
-
-          <div class="px-5 pb-5 pt-2 border-t border-slate-800/80 flex items-center justify-between bg-slate-900/30">
-            <div>
-              <span class="text-[10px] text-slate-500 uppercase font-semibold block">Price</span>
-              <span class="text-base font-extrabold text-white">${p.price || 'Inquire'}</span>
-            </div>
-            
-            <a href="${p.url}" target="_blank" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-200 font-bold text-xs transition flex items-center gap-1.5 shadow-sm">
-              <span>View Product</span>
-              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-            </a>
-          </div>
-        `;
+        const card = createCardElement(p);
         resultsGrid.appendChild(card);
+        if (resultsTableBody) {
+          const row = createTableRowElement(p);
+          resultsTableBody.appendChild(row);
+        }
       });
     }
 
