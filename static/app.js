@@ -162,7 +162,7 @@
         const data = await res.json();
         currentReferences = Array.isArray(data) ? data : (data.references || []);
         // Default: select all references
-        selectedReferences = new Set(); // None selected by default
+        selectedReferences = new Set(currentReferences);
         updateReferencesUI();
       } catch (err) {
         console.error('Failed to load references:', err);
@@ -985,7 +985,7 @@
 
       // Select All / Deselect All References
       btnSelectAllRefs.addEventListener('click', () => {
-        selectedReferences = new Set(); // None selected by default
+        selectedReferences = new Set(currentReferences);
         updateReferencesUI();
       });
 
@@ -1001,7 +1001,7 @@
           const res = await fetch('/api/references/sync-gdoc', { method: 'POST' });
           const data = await res.json();
           currentReferences = Array.isArray(data) ? data : (data.references || []);
-          selectedReferences = new Set(); // None selected by default
+          selectedReferences = new Set(currentReferences);
           updateReferencesUI();
           alert(`Synced ${data.count} references from Google Doc!`);
         } catch (e) {
