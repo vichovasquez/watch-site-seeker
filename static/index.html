@@ -1133,6 +1133,7 @@
                   resultsSummaryText.textContent = `Found ${currentResults.length} matching items across ${enabledSites.length} websites in ${finalElapsed}s for "${query}"`;
                   searchStatusText.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check-circle"></i> Search Complete!</span> Found ${currentResults.length} matching watch listings.`;
                   populateFilterDropdowns();
+                  updateMarketSnapshot(currentResults, query);
                   if (currentResults.length === 0) {
                     noMatchesState.classList.remove('hidden');
                   }
@@ -1322,7 +1323,7 @@
     }
 
     
-    // View Switcher State
+// View Switcher State
     let currentViewMode = 'grid'; // 'grid' or 'table'
     const btnViewGrid = document.getElementById('btnViewGrid');
     const btnViewTable = document.getElementById('btnViewTable');
@@ -1338,12 +1339,12 @@
     function setViewMode(mode) {
       currentViewMode = mode;
       if (mode === 'grid') {
-        btnViewGrid.className = 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition';
+        btnViewGrid.className = 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition font-bold';
         btnViewTable.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white flex items-center gap-1.5 transition';
         resultsGrid.classList.remove('hidden');
         resultsTableContainer.classList.add('hidden');
       } else {
-        btnViewTable.className = 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition';
+        btnViewTable.className = 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1.5 transition font-bold';
         btnViewGrid.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white flex items-center gap-1.5 transition';
         resultsGrid.classList.add('hidden');
         resultsTableContainer.classList.remove('hidden');
@@ -1365,23 +1366,25 @@
       const formatted = `${title} — ${price} at ${store}\n${url}`;
       navigator.clipboard.writeText(formatted).then(() => {
         const originalHtml = btn.innerHTML;
-        btn.className = btn.className.replace('bg-slate-800', 'bg-emerald-600 text-white border-emerald-400');
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Copied!</span>';
+        btn.classList.remove('bg-slate-800', 'text-slate-300');
+        btn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-400');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> <span class="text-[11px] font-bold">Copied!</span>';
         setTimeout(() => {
           btn.innerHTML = originalHtml;
-          btn.className = btn.className.replace('bg-emerald-600 text-white border-emerald-400', 'bg-slate-800');
+          btn.classList.remove('bg-emerald-600', 'text-white', 'border-emerald-400');
+          btn.classList.add('bg-slate-800', 'text-slate-300');
         }, 2000);
       }).catch(err => {
         console.error('Clipboard error:', err);
       });
     }
 
-    function updateMarketSnapshot(items) {
+    function updateMarketSnapshot(items, activeQuery = '') {
       if (!marketSnapshotBar) return;
       const pricedItems = items.map(p => ({
         ...p,
         numericPrice: extractNumericPrice(p.price)
-      })).filter(p => p.numericPrice !== null && p.numericPrice > 500);
+      })).filter(p => p.numericPrice !== null && p.numericPrice > 300);
 
       if (pricedItems.length === 0) {
         marketSnapshotBar.classList.add('hidden');
@@ -1399,6 +1402,11 @@
         : pricedItems[medianIndex].numericPrice;
 
       const uniqueStores = new Set(items.map(p => p.site_name || 'Dealer')).size;
+
+      const qEl = document.getElementById('marketSnapshotQuery');
+      if (qEl && activeQuery) {
+        qEl.textContent = `Market Intelligence for "${activeQuery}"`;
+      }
 
       document.getElementById('statLowestPrice').textContent = `$${lowest.numericPrice.toLocaleString()}`;
       document.getElementById('statLowestDealer').textContent = lowest.site_name || 'Dealer';
@@ -1422,11 +1430,6 @@
       const imageHtml = p.image 
         ? `<div class="w-full h-48 bg-slate-900 overflow-hidden relative"><img src="${p.image}" alt="${p.title}" loading="lazy" decoding="async" class="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300" onerror="this.parentElement.style.display='none'"></div>`
         : `<div class="w-full h-24 bg-gradient-to-br from-slate-900 to-slate-950 flex items-center justify-center text-slate-700 text-3xl"><i class="fa-solid fa-clock"></i></div>`;
-
-      const safeTitle = (p.title || '').replace(/"/g, '&quot;');
-      const safePrice = (p.price || 'Inquire').replace(/"/g, '&quot;');
-      const safeStore = (p.site_name || 'Dealer').replace(/"/g, '&quot;');
-      const safeUrl = (p.url || '#').replace(/"/g, '&quot;');
 
       card.innerHTML = `
         <div>
@@ -1459,16 +1462,25 @@
             <span class="text-base font-extrabold text-amber-400 font-mono">${p.price || 'Inquire'}</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <button onclick="copyListingDetails('${safeTitle}', '${safePrice}', '${safeStore}', '${safeUrl}', this)" title="Copy Watch Summary & Link" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1">
-              <i class="fa-regular fa-copy"></i>
+            <button class="btn-copy-card px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700/60" title="1-Click Copy Listing Summary">
+              <i class="fa-solid fa-copy text-amber-400"></i>
+              <span class="text-[11px]">Copy</span>
             </button>
-            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5">
+            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700/60">
               <span>View</span>
               <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
             </a>
           </div>
         </div>
       `;
+
+      const copyBtn = card.querySelector('.btn-copy-card');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          copyListingDetails(p.title, p.price, p.site_name || 'Dealer', p.url, copyBtn);
+        });
+      }
+
       return card;
     }
 
@@ -1483,11 +1495,6 @@
         ? `<img src="${p.image}" alt="${p.title}" loading="lazy" class="w-10 h-10 object-contain rounded-lg bg-slate-900 border border-slate-800 p-0.5" onerror="this.style.display='none'">`
         : `<div class="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-slate-600"><i class="fa-solid fa-clock"></i></div>`;
 
-      const safeTitle = (p.title || '').replace(/"/g, '&quot;');
-      const safePrice = (p.price || 'Inquire').replace(/"/g, '&quot;');
-      const safeStore = (p.site_name || 'Dealer').replace(/"/g, '&quot;');
-      const safeUrl = (p.url || '#').replace(/"/g, '&quot;');
-
       tr.innerHTML = `
         <td class="p-3.5 text-center">${imageHtml}</td>
         <td class="p-3.5 font-bold text-white hover:text-amber-300">
@@ -1501,20 +1508,29 @@
         </td>
         <td class="p-3.5 text-right whitespace-nowrap">
           <div class="flex items-center justify-end gap-1.5">
-            <button onclick="copyListingDetails('${safeTitle}', '${safePrice}', '${safeStore}', '${safeUrl}', this)" title="Copy Watch Summary" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1">
-              <i class="fa-regular fa-copy"></i>
+            <button class="btn-copy-row px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1 border border-slate-700/60" title="1-Click Copy Listing Summary">
+              <i class="fa-solid fa-copy text-amber-400"></i>
+              <span class="text-[10px]">Copy</span>
             </button>
-            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1">
+            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-amber-500 text-slate-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 border border-slate-700/60">
               <span>View</span>
               <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
             </a>
           </div>
         </td>
       `;
+
+      const copyBtn = tr.querySelector('.btn-copy-row');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          copyListingDetails(p.title, p.price, p.site_name || 'Dealer', p.url, copyBtn);
+        });
+      }
+
       return tr;
     }
 
-    function appendResultCard(p) {
+    function appendResultCard(p, activeQuery = '') {
       if (noMatchesState) noMatchesState.classList.add('hidden');
       const card = createCardElement(p);
       resultsGrid.appendChild(card);
@@ -1523,8 +1539,9 @@
         const row = createTableRowElement(p);
         resultsTableBody.appendChild(row);
       }
-    }
 
+      updateMarketSnapshot(currentResults, activeQuery);
+    }
 
     function renderResults() {
       resultsGrid.innerHTML = '';
