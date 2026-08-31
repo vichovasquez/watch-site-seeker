@@ -4,7 +4,8 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PORT=8080 \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    PATH="/root/.local/bin:${PATH}"
 
 # Set work directory
 WORKDIR /app
@@ -25,4 +26,4 @@ COPY . .
 EXPOSE 8080
 
 # Command to run application on Cloud Run
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
